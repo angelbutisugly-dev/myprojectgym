@@ -128,7 +128,7 @@ export const BotConfigAndCloudSection: React.FC<BotConfigAndCloudSectionProps> =
   const [isToggling247, setIsToggling247] = useState<boolean>(false);
   const [localUrl, setLocalUrl] = useState<string>('http://localhost:3000');
   const [lanUrl, setLanUrl] = useState<string>('http://192.168.1.100:3000');
-  const [guideTab, setGuideTab] = useState<'local' | 'hosting' | 'sync'>('local');
+  const [guideTab, setGuideTab] = useState<'local' | 'hosting' | 'sync' | 'manual'>('local');
   const [copiedStepKey, setCopiedStepKey] = useState<string | null>(null);
   const liveWebUrl =
     typeof window !== 'undefined' && window.location?.origin
@@ -1010,24 +1010,35 @@ iniciarBotFormaGym();
         </div>
       </div>
 
-      {/* 0B. COMPLETE GUIDE: HOW TO RUN LOCALLY ON PC OR HOST 24/7 ON ANY CLOUD SERVER */}
+      {/* 0B. COMPLETE GUIDE: DATABASE PATHS, RUNNING .SH/.BAT, SELF-HOSTING YOUR PC AS A SERVER, CLOUD HOSTING & BOT MANUAL */}
       <div className="bg-white border-2 border-emerald-200 rounded-xl p-6 space-y-5 shadow-2xs">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="space-y-1">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 text-[11px] font-bold uppercase tracking-wider">
               <HardDrive className="w-3.5 h-3.5 text-emerald-700" />
-              Guía Oficial: Ejecución Local (PC/Laptop) y Hosting Propio 24/7
+              Guía Maestra Completa: Base de Datos, Scripts (.SH / .BAT), Servidor Propio y Manual del Bot
             </span>
             <h2 className="text-lg font-bold text-slate-900">
-              Cómo Correr {settings.businessName} en tu Computadora Local o Alojarlo en Internet (Hosting)
+              Todo sobre Dónde se Guardan los Datos, Cómo Convertir tu PC en Servidor 24/7 y Cómo Usar el Bot
             </h2>
             <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
-              Este programa está preparado para funcionar de <strong>3 formas</strong>: directamente con el enlace web de arriba, instalado en la <strong>computadora del gimnasio (Modo Local)</strong>, o subido a tu propio <strong>servidor de Hosting 24/7 (Railway, Render o VPS)</strong>. Selecciona una pestaña para ver el paso a paso:
+              Consulta aquí exactamente <strong>dónde van la base de datos y los archivos</strong>, cómo ejecutar el script <code className="font-mono bg-slate-100 px-1 rounded">.sh</code> o <code className="font-mono bg-slate-100 px-1 rounded">.bat</code>, cómo hacer que tu propia computadora funcione como un <strong>servidor 24/7 (en Wi-Fi o con enlace público en Internet gratis)</strong>, y el manual completo de operación del bot y la app:
             </p>
           </div>
 
           {/* Sub-tabs for the Guide */}
           <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setGuideTab('sync')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                guideTab === 'sync'
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              🗄️ 1. Dónde se Guarda la Base de Datos
+            </button>
             <button
               type="button"
               onClick={() => setGuideTab('local')}
@@ -1037,7 +1048,7 @@ iniciarBotFormaGym();
                   : 'text-slate-700 hover:bg-slate-200'
               }`}
             >
-              💻 1. Correr en tu PC (Local)
+              💻 2. Cómo Correr el .SH / .BAT en tu PC
             </button>
             <button
               type="button"
@@ -1048,40 +1059,126 @@ iniciarBotFormaGym();
                   : 'text-slate-700 hover:bg-slate-200'
               }`}
             >
-              ☁️ 2. Alojar 24/7 en Hosting Web
+              🌐 3. Hacer tu PC un Servidor 24/7 o Hosting
             </button>
             <button
               type="button"
-              onClick={() => setGuideTab('sync')}
+              onClick={() => setGuideTab('manual')}
               className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                guideTab === 'sync'
+                guideTab === 'manual'
                   ? 'bg-emerald-600 text-white shadow-2xs'
                   : 'text-slate-700 hover:bg-slate-200'
               }`}
             >
-              🔄 3. Respaldo y Archivos Clave
+              📘 4. Manual de Uso del Bot y la App
             </button>
           </div>
         </div>
 
-        {/* TAB 1: LOCAL EXECUTION ON WINDOWS / MAC / LINUX */}
+        {/* TAB 1: WHERE THE DATABASE & ALL SAVED FILES GO */}
+        {guideTab === 'sync' && (
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-slate-900 text-white space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                  Ubicación Exacta de Todos los Archivos Guardados en Disco
+                </span>
+                <span className="text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded font-semibold">
+                  Guardado Instantáneo en Disco Local
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Todo lo que haces en la página web y todo lo que recibe el bot de WhatsApp se guarda <strong>directamente dentro de la carpeta del proyecto en tu disco duro</strong>. No se borra nada al cerrar el navegador ni al apagar la computadora:
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                  <div className="text-xs font-mono font-bold text-emerald-400">
+                    /data/gym-local-db.json
+                  </div>
+                  <div className="text-xs font-bold text-white">
+                    Base de Datos Principal del Gimnasio
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Se crea sola al iniciar el servidor. Guarda <strong>todas las Membresías, Inscripciones Vitalicias (isRegistered), Productos de la Tienda, Pedidos, Reportes de Pago Móvil, Tasas (BCV/Euro/Manual), Números Admin y Configuraciones</strong>. Si copias este archivo a un pendrive, tienes respaldado todo tu gimnasio.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                  <div className="text-xs font-mono font-bold text-sky-400">
+                    /baileys_auth_info/
+                  </div>
+                  <div className="text-xs font-bold text-white">
+                    Sesión Vinculada de WhatsApp
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Contiene <code className="font-mono text-slate-200">creds.json</code> y las llaves encriptadas cuando escaneas el QR o metes el código de 8 dígitos. Permite que al reiniciar la PC o el servidor, <strong>el bot se reconecte solo a WhatsApp sin pedir QR de nuevo</strong>.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                  <div className="text-xs font-mono font-bold text-amber-400">
+                    /.env (Opcional)
+                  </div>
+                  <div className="text-xs font-bold text-white">
+                    Puerto y Clave de IA Opcional
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Define <code className="font-mono text-slate-200">PORT=3000</code> y opcionalmente <code className="font-mono text-slate-200">GEMINI_API_KEY</code>. <strong>No es obligatorio en local:</strong> el bot en español, el lector regex de referencias de Pago Móvil y la tasa BCV en vivo funcionan sin clave.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 flex flex-wrap items-center justify-between gap-4">
+              <div className="space-y-1 max-w-2xl">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Descargar Respaldo Manual de la Base de Datos Ahora Mismo
+                </h3>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Además del archivo automático <code className="font-mono font-bold">/data/gym-local-db.json</code>, puedes descargar cuando quieras una copia completa en Excel (.CSV) o .JSON:
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={onDownloadOrganizedExcel}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Descargar Base de Datos en Excel (.CSV)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onDownloadOrganizedJson}
+                  className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar Respaldo Completo (.JSON)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: HOW TO RUN .SH AND .BAT LOCALLY ON WINDOWS / MAC / LINUX */}
         {guideTab === 'local' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Step 1 */}
+              {/* Step 1: Node.js & Project */}
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
-                    PASO 1
+                    1. REQUISITO ÚNICO
                   </span>
                   <span className="text-[11px] font-semibold text-slate-500">Solo la primera vez</span>
                 </div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Descargar el Proyecto e Instalar Node.js
+                  Instalar Node.js y Descomprimir Carpeta
                 </h3>
                 <ol className="text-xs text-slate-600 space-y-1.5 list-decimal list-inside leading-relaxed">
                   <li>
-                    Descarga e instala <strong>Node.js (Versión LTS)</strong> desde{' '}
+                    Instala <strong>Node.js (v18, v20 o v22 LTS)</strong> desde{' '}
                     <a
                       href="https://nodejs.org"
                       target="_blank"
@@ -1093,80 +1190,104 @@ iniciarBotFormaGym();
                     .
                   </li>
                   <li>
-                    Descarga el código completo de este proyecto (en formato <strong>.ZIP</strong> o por GitHub) y descomprímelo en una carpeta en tu computadora (por ejemplo en el Escritorio: <code className="font-mono bg-slate-200 px-1 rounded">FormaGym</code>).
+                    Descomprime la carpeta del proyecto en tu computadora (ej. <code className="font-mono bg-slate-200 px-1 rounded">FormaGym</code>).
+                  </li>
+                  <li>
+                    Adentro ya vienen listos <code className="font-mono bg-slate-200 px-1 rounded">iniciar_local_mac_linux.sh</code> e <code className="font-mono bg-slate-200 px-1 rounded">INICIAR_LOCAL_WINDOWS.bat</code>.
                   </li>
                 </ol>
               </div>
 
-              {/* Step 2 */}
+              {/* Step 2: How to run the .SH file */}
               <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="px-2 py-0.5 bg-emerald-700 text-white rounded text-[11px] font-bold">
-                    PASO 2 (OPCIÓN RÁPIDA 1 CLIC)
+                    2. CÓMO CORRER EL ARCHIVO .SH
                   </span>
-                  <span className="text-[11px] font-bold text-emerald-800">Recomendado</span>
+                  <span className="text-[11px] font-bold text-emerald-800">Mac / Linux / Git Bash</span>
                 </div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Iniciar con Doble Clic (Sin escribir comandos)
+                  Ejecutar <code className="font-mono">iniciar_local_mac_linux.sh</code>
                 </h3>
                 <p className="text-xs text-slate-700 leading-relaxed">
-                  El proyecto ya incluye el archivo <code className="font-mono font-bold">INICIAR_LOCAL_WINDOWS.bat</code> (y también puedes descargarlo aquí abajo). Ponlo dentro de la carpeta del proyecto y hazle <strong>doble clic</strong>: instalará todo solo y abrirá el programa.
+                  Abre la Terminal en la carpeta del proyecto. Dale permiso de ejecución una sola vez con <code className="font-mono font-bold">chmod +x</code> y luego ejecútalo (instala <code className="font-mono">node_modules</code> automáticamente si faltan y arranca el servidor):
                 </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
+                    <span>chmod +x iniciar_local_mac_linux.sh</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyStepWithFeedback('sh_chmod', 'chmod +x iniciar_local_mac_linux.sh')
+                      }
+                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'sh_chmod' ? 'Copiado ✓' : 'Copiar'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
+                    <span>./iniciar_local_mac_linux.sh</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyStepWithFeedback('sh_run', './iniciar_local_mac_linux.sh')
+                      }
+                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'sh_run' ? 'Copiado ✓' : 'Copiar'}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-600">
+                  💡 O en un solo paso sin chmod: <code className="font-mono bg-white px-1 rounded border border-emerald-200">bash iniciar_local_mac_linux.sh</code>
+                </p>
+              </div>
+
+              {/* Step 3: Windows .BAT & npm commands */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
+                    3. WINDOWS (.BAT) O TERMINAL NPM
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-500">Windows / Cualquier OS</span>
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Doble Clic en Windows o Comandos NPM
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  En Windows solo haz <strong>doble clic</strong> sobre <code className="font-mono font-bold">INICIAR_LOCAL_WINDOWS.bat</code>. O corre estos comandos en cualquier terminal:
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
+                    <span>npm install && npm run local</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyStepWithFeedback('cmd_local', 'npm install && npm run local')
+                      }
+                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'cmd_local' ? 'Copiado ✓' : 'Copiar'}
+                    </button>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <button
                     type="button"
                     onClick={handleDownloadWindowsLauncher}
-                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Descargar Iniciador Windows (.BAT)</span>
+                    <Download className="w-3 h-3" />
+                    <span>Descargar .BAT</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleDownloadUnixLauncher}
-                    className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                    className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Mac / Linux (.SH)</span>
+                    <Download className="w-3 h-3" />
+                    <span>Descargar .SH</span>
                   </button>
-                </div>
-              </div>
-
-              {/* Step 3 */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
-                    PASO 3 (POR TERMINAL)
-                  </span>
-                  <span className="text-[11px] font-semibold text-slate-500">CMD / PowerShell</span>
-                </div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  Comandos para Correrlo Manualmente
-                </h3>
-                <p className="text-xs text-slate-600">
-                  Si prefieres abrir la terminal dentro de la carpeta del proyecto, ejecuta estos dos comandos:
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
-                    <span>npm install</span>
-                    <button
-                      type="button"
-                      onClick={() => copyStepWithFeedback('cmd_install', 'npm install')}
-                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
-                    >
-                      {copiedStepKey === 'cmd_install' ? 'Copiado ✓' : 'Copiar'}
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
-                    <span>npm run dev</span>
-                    <button
-                      type="button"
-                      onClick={() => copyStepWithFeedback('cmd_dev', 'npm run dev')}
-                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
-                    >
-                      {copiedStepKey === 'cmd_dev' ? 'Copiado ✓' : 'Copiar'}
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1178,7 +1299,7 @@ iniciarBotFormaGym();
                   Direcciones cuando corre en tu Computadora Local
                 </span>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Una vez iniciado en tu PC, entra a <strong className="text-white">http://localhost:3000</strong>. Además, cualquier teléfono o tablet conectado al <strong>mismo Wi-Fi del gimnasio</strong> puede entrar usando la dirección IP de tu computadora:
+                  En la misma PC abre <strong className="text-white">http://localhost:3000</strong>. Y cualquier celular o laptop conectada al <strong>mismo Wi-Fi del gimnasio</strong> puede entrar con la IP local de tu PC (para la vista pública de clientes agrega <code className="text-emerald-300">/?vista=cliente</code>):
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1217,75 +1338,107 @@ iniciarBotFormaGym();
           </div>
         )}
 
-        {/* TAB 2: CLOUD HOSTING 24/7 (RAILWAY / RENDER / VPS / DOCKER) */}
+        {/* TAB 3: HOW TO TURN YOUR OWN PC INTO A 24/7 SERVER OR USE CLOUD HOSTING */}
         {guideTab === 'hosting' && (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Option A: Railway / Render */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Column 1: Keep PC Awake + PM2 24/7 Auto-Restart */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 bg-emerald-700 text-white rounded text-[11px] font-bold">
-                    OPCIÓN A: HOSTING EN LA NUBE (RAILWAY / RENDER)
+                  <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
+                    PARTE 1: TU PC COMO SERVIDOR 24/7
                   </span>
-                  <span className="text-[11px] font-semibold text-emerald-800">24/7 sin tener la PC prendida</span>
                 </div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Subir a Railway.app o Render.com en 3 minutos
+                  Dejar tu PC Encendida en Segundo Plano con PM2
                 </h3>
-                <ol className="text-xs text-slate-600 space-y-1.5 list-decimal list-inside leading-relaxed">
-                  <li>
-                    Sube este proyecto a un repositorio privado en tu cuenta de <strong>GitHub</strong>.
-                  </li>
-                  <li>
-                    Crea una cuenta en <strong>Railway.app</strong> o <strong>Render.com</strong>, elige <strong>"New Web Service"</strong> y selecciona tu repositorio de GitHub.
-                  </li>
-                  <li>
-                    Si el hosting te pide los comandos de compilación e inicio, copia y pega exactamente estos:
-                  </li>
-                </ol>
-
-                <div className="space-y-2 pt-1">
-                  <div>
-                    <span className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Build Command (Comando de construcción):
-                    </span>
-                    <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
-                      <span>npm install && npm run build</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          copyStepWithFeedback('host_build', 'npm install && npm run build')
-                        }
-                        className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
-                      >
-                        {copiedStepKey === 'host_build' ? 'Copiado ✓' : 'Copiar'}
-                      </button>
-                    </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  1. En Windows/Mac desactiva la <strong>Suspensión automática</strong> cuando esté conectada a la corriente.<br />
+                  2. Instala <strong>PM2</strong> para que el servidor corra oculto y se reinicie solo si se va la luz o se reinicia la PC:
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-2.5 py-1.5 rounded-lg font-mono text-[11px]">
+                    <span>npm install -g pm2 && npm run build</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyStepWithFeedback('pm2_1', 'npm install -g pm2 && npm run build')
+                      }
+                      className="text-[10px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'pm2_1' ? '✓' : 'Copiar'}
+                    </button>
                   </div>
-
-                  <div>
-                    <span className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Start Command (Comando de inicio 24/7):
-                    </span>
-                    <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
-                      <span>npm run host</span>
-                      <button
-                        type="button"
-                        onClick={() => copyStepWithFeedback('host_start', 'npm run host')}
-                        className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
-                      >
-                        {copiedStepKey === 'host_start' ? 'Copiado ✓' : 'Copiar'}
-                      </button>
-                    </div>
+                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-2.5 py-1.5 rounded-lg font-mono text-[11px]">
+                    <span>pm2 start "npm run host" --name formagym</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyStepWithFeedback('pm2_2', 'pm2 start "npm run host" --name formagym')
+                      }
+                      className="text-[10px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'pm2_2' ? '✓' : 'Copiar'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-2.5 py-1.5 rounded-lg font-mono text-[11px]">
+                    <span>pm2 save && pm2 startup</span>
+                    <button
+                      type="button"
+                      onClick={() => copyStepWithFeedback('pm2_3', 'pm2 save && pm2 startup')}
+                      className="text-[10px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'pm2_3' ? '✓' : 'Copiar'}
+                    </button>
                   </div>
                 </div>
+                <p className="text-[11px] text-slate-500">
+                  Usa <code className="font-mono">pm2 logs formagym</code> para ver mensajes en vivo o <code className="font-mono">pm2 restart formagym</code> para reiniciar.
+                </p>
               </div>
 
-              {/* Option B: VPS / PM2 / Docker */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              {/* Column 2: Expose Local PC to the Internet with Cloudflare Tunnel */}
+              <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
-                    OPCIÓN B: SERVIDOR VPS (UBUNTU / DIGITALOCEAN / DOCKER)
+                  <span className="px-2 py-0.5 bg-emerald-700 text-white rounded text-[11px] font-bold">
+                    PARTE 2: ABRIR TU PC A INTERNET GRATIS
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Enlace Público HTTPS desde tu PC (Cloudflare Tunnel)
+                </h3>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Nota: <strong>El bot de WhatsApp ya funciona hacia todo el mundo</strong> con solo tener internet en tu PC. Pero si además quieres un enlace <code className="font-mono">https://...</code> público para abrir la web desde fuera de tu casa sin abrir puertos del router ni pagar hosting:
+                </p>
+                <ol className="text-xs text-slate-700 space-y-1 list-decimal list-inside">
+                  <li>Descarga <strong>cloudflared</strong> (Cloudflare Tunnel).</li>
+                  <li>Con tu servidor corriendo en el puerto 3000, ejecuta:</li>
+                </ol>
+                <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-2.5 py-1.5 rounded-lg font-mono text-[11px]">
+                  <span>cloudflared tunnel --url http://localhost:3000</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      copyStepWithFeedback(
+                        'cf_tunnel',
+                        'cloudflared tunnel --url http://localhost:3000'
+                      )
+                    }
+                    className="text-[10px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                  >
+                    {copiedStepKey === 'cf_tunnel' ? '✓' : 'Copiar'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-600">
+                  Te dará al instante un link público <code className="font-mono">https://....trycloudflare.com</code> conectado directo a tu PC.
+                </p>
+              </div>
+
+              {/* Column 3: Cloud Hosting Railway / Render / VPS */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
+                    OPCIÓN NUBE: RAILWAY / RENDER / VPS
                   </span>
                   <button
                     type="button"
@@ -1293,105 +1446,137 @@ iniciarBotFormaGym();
                     className="text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Download className="w-3 h-3" />
-                    <span>Descargar Dockerfile</span>
+                    <span>Dockerfile</span>
                   </button>
                 </div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Mantener encendido para siempre con PM2 o Docker
+                  Alojar en Servidor Cloud (Sin tener tu PC prendida)
                 </h3>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Si usas un VPS con Linux o quieres dejarlo en segundo plano con auto-reinicio automático si se va la luz, instala <strong>PM2</strong> y ejecútalo así:
+                  Si prefieres subirlo a <strong>Railway.app</strong> o <strong>Render.com</strong> desde GitHub, usa estos comandos de configuración:
                 </p>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
-                    <span>npm install -g pm2</span>
-                    <button
-                      type="button"
-                      onClick={() => copyStepWithFeedback('pm2_1', 'npm install -g pm2')}
-                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
-                    >
-                      {copiedStepKey === 'pm2_1' ? 'Copiado ✓' : 'Copiar'}
-                    </button>
+                <div className="space-y-1.5">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-600 block">Build Command:</span>
+                    <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-2.5 py-1.5 rounded-lg font-mono text-[11px]">
+                      <span>npm install && npm run build</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          copyStepWithFeedback('host_build', 'npm install && npm run build')
+                        }
+                        className="text-[10px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                      >
+                        {copiedStepKey === 'host_build' ? '✓' : 'Copiar'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
-                    <span>pm2 start "npm run host" --name formagym</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        copyStepWithFeedback('pm2_2', 'pm2 start "npm run host" --name formagym')
-                      }
-                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
-                    >
-                      {copiedStepKey === 'pm2_2' ? 'Copiado ✓' : 'Copiar'}
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
-                    <span>pm2 save && pm2 startup</span>
-                    <button
-                      type="button"
-                      onClick={() => copyStepWithFeedback('pm2_3', 'pm2 save && pm2 startup')}
-                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
-                    >
-                      {copiedStepKey === 'pm2_3' ? 'Copiado ✓' : 'Copiar'}
-                    </button>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-600 block">Start Command:</span>
+                    <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-2.5 py-1.5 rounded-lg font-mono text-[11px]">
+                      <span>npm run host</span>
+                      <button
+                        type="button"
+                        onClick={() => copyStepWithFeedback('host_start', 'npm run host')}
+                        className="text-[10px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                      >
+                        {copiedStepKey === 'host_start' ? '✓' : 'Copiar'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <p className="text-[11px] text-slate-500">
-                  <strong>Variables de entorno (.env):</strong> Opcionalmente agrega <code className="font-mono">GEMINI_API_KEY</code> para activar el escaneo visual de comprobantes con IA. El puerto se asigna automáticamente (<code className="font-mono">PORT=3000</code>).
-                </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* TAB 3: SYNCING & BACKUP BETWEEN LOCAL, HOSTING & AI STUDIO */}
-        {guideTab === 'sync' && (
+        {/* TAB 4: COMPLETE OPERATIONAL MANUAL FOR THE BOT & APP */}
+        {guideTab === 'manual' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              {/* Section A: Phone Roles */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
+                  1. ROLES DE TELÉFONOS Y PRIVACIDAD DE ADMINS
+                </span>
                 <h3 className="text-sm font-bold text-slate-900">
-                  1. ¿Dónde se guardan tus datos y la sesión de WhatsApp?
+                  Cómo funcionan los Números Admin vs. Pagos y Soporte
                 </h3>
-                <ul className="text-xs text-slate-600 space-y-2 leading-relaxed">
+                <ul className="text-xs text-slate-600 space-y-1.5 leading-relaxed">
                   <li>
-                    • <code className="font-mono font-bold text-slate-900 bg-slate-200 px-1.5 py-0.5 rounded">formagym_local_db.json</code>: Archivo automático en la carpeta raíz del proyecto donde se guardan todas tus membresías, inscripciones vitalicias, productos, tasas, precios y reportes eliminados.
+                    • <strong>Números de Administradores (Admin Numbers):</strong> Tienen permiso de aprobar pagos y confirmar si un cliente está inscrito desde WhatsApp, pero <strong>NUNCA reciben comprobantes de Pago Móvil ni preguntas de soporte</strong> (a menos que pongas ese mismo número también en las casillas de Pagos o Soporte).
                   </li>
                   <li>
-                    • <code className="font-mono font-bold text-slate-900 bg-slate-200 px-1.5 py-0.5 rounded">baileys_auth_info/</code>: Carpeta donde se guarda la vinculación de tu WhatsApp para que no tengas que volver a escanear el código QR cuando reinicies la PC o el servidor.
+                    • <strong>Teléfono Receptor de Pagos:</strong> Recibe los captures/referencias de Pago Móvil enviados por los clientes.
                   </li>
                   <li>
-                    • <strong>Firebase Cloud Firestore:</strong> También sincroniza tus registros en la nube automáticamente para que nunca se pierdan.
+                    • <strong>Teléfono de Soporte:</strong> Recibe las dudas cuando un cliente pide atención humana.
                   </li>
                 </ul>
               </div>
 
-              <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-3">
+              {/* Section B: Registration ($15) + Membership ($30) Flow */}
+              <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-2">
+                <span className="px-2 py-0.5 bg-emerald-700 text-white rounded text-[11px] font-bold">
+                  2. INSCRIPCIÓN VITALICIA ($15) + MEMBRESÍA ($30)
+                </span>
                 <h3 className="text-sm font-bold text-slate-900">
-                  2. Descargar Copia Completa Ahora Mismo
+                  Flujo Automático de Inscripción de por Vida y Mensualidad
                 </h3>
-                <p className="text-xs text-slate-700 leading-relaxed">
-                  Puedes descargar en cualquier momento toda la base de datos del gimnasio en Excel (.CSV) o en formato .JSON para llevarla a tu PC local o guardarla como respaldo:
-                </p>
-                <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={onDownloadOrganizedExcel}
-                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5" />
-                    <span>Descargar Base de Datos en Excel (.CSV)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onDownloadOrganizedJson}
-                    className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Descargar Respaldo Completo (.JSON)</span>
-                  </button>
-                </div>
+                <ul className="text-xs text-slate-700 space-y-1.5 leading-relaxed">
+                  <li>
+                    • La <strong>Inscripción ($15 por defecto)</strong> usa exactamente la misma tasa que la Membresía y <strong>se paga una sola vez en la vida</strong>.
+                  </li>
+                  <li>
+                    • Si un cliente escribe para pagar membresía y no está registrado, el bot le pregunta:
+                    <br />
+                    <strong>Opción 1 ("Soy nuevo"):</strong> Le cobra <strong>Inscripción + Membresía</strong> juntas. Al aprobarse su pago, queda marcado como <code className="font-mono font-bold">Inscrito Vitalicio</code> para siempre.
+                    <br />
+                    <strong>Opción 2 ("Ya estoy inscrito"):</strong> El bot le pide <strong>Cédula, Nombre y Apellido</strong> y le avisa al Admin para verificar.
+                  </li>
+                  <li>
+                    • <strong>Confirmación del Admin:</strong> En la pestaña <em>Aprobación de Pagos</em> o <em>Membresías</em> (o por WhatsApp enviando <code className="font-mono bg-white px-1 rounded">inscrito 0414...</code> o <code className="font-mono bg-white px-1 rounded">no inscrito 0414...</code>), el Admin confirma si realmente estaba inscrito (para cobrarle solo la mensualidad) o lo rechaza (para cobrarle Inscripción + Membresía).
+                  </li>
+                </ul>
+              </div>
+
+              {/* Section C: Store & Rate Application */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
+                  3. TIENDA, TASAS Y BOTÓN "APLICAR TASA"
+                </span>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Precios en Dólares ($), Bolívares (Bs.) y Productos
+                </h3>
+                <ul className="text-xs text-slate-600 space-y-1.5 leading-relaxed">
+                  <li>
+                    • Puedes alternar entre <strong>Dólar BCV (Automático)</strong>, <strong>Euro BCV</strong> o <strong>Tasa Manual</strong>.
+                  </li>
+                  <li>
+                    • En <em>Tienda y Precios</em>, al cambiar el precio en USD ($) de cualquier producto, el precio en Bs. se recalcula al instante. Además tienes el botón <strong>"Aplicar Tasa"</strong> tanto al crear un producto como en cada fila para forzar el cálculo y guardado con un clic.
+                  </li>
+                </ul>
+              </div>
+
+              {/* Section D: Approving Payments & Public Store */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
+                  4. APROBACIÓN DE PAGOS Y PÁGINA PÚBLICA DE CLIENTES
+                </span>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Comandos por WhatsApp, Web y Catálogo Público
+                </h3>
+                <ul className="text-xs text-slate-600 space-y-1.5 leading-relaxed">
+                  <li>
+                    • <strong>Aprobar un Pago Móvil:</strong> Haz clic en <strong>"Aprobar Pago"</strong> en la web o responde desde un número Admin en WhatsApp escribiendo <code className="font-mono bg-slate-200 px-1 rounded">aprobado 04141234567</code>.
+                  </li>
+                  <li>
+                    • Si al cliente le faltaba dar su Cédula y Nombre, el bot se los pide automáticamente tras aprobar el pago y activa sus 30 días de membresía.
+                  </li>
+                  <li>
+                    • <strong>Vista Pública para Clientes:</strong> Usa el botón <em>"Vista Cliente (Público)"</em> arriba en la barra o comparte el enlace terminado en <code className="font-mono bg-slate-200 px-1 rounded">/?vista=cliente</code>.
+                  </li>
+                </ul>
               </div>
             </div>
           </div>

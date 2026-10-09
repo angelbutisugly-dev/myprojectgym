@@ -2,6 +2,48 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function () {
+        var NativeWebSocket = window.WebSocket;
+        if (!NativeWebSocket) return;
+        function SafeWebSocket(url, protocols) {
+          var protoStr = Array.isArray(protocols) ? protocols.join(',') : String(protocols || '');
+          if (protoStr.indexOf('vite-hmr') !== -1 || protoStr.indexOf('vite-ping') !== -1) {
+            var fakeTarget = new EventTarget();
+            return {
+              CONNECTING: 0,
+              OPEN: 1,
+              CLOSING: 2,
+              CLOSED: 3,
+              readyState: 1,
+              protocol: protoStr,
+              url: String(url || ''),
+              bufferedAmount: 0,
+              extensions: '',
+              binaryType: 'blob',
+              onopen: null,
+              onerror: null,
+              onclose: null,
+              onmessage: null,
+              addEventListener: fakeTarget.addEventListener.bind(fakeTarget),
+              removeEventListener: fakeTarget.removeEventListener.bind(fakeTarget),
+              dispatchEvent: fakeTarget.dispatchEvent.bind(fakeTarget),
+              send: function () {},
+              close: function () {
+                this.readyState = 3;
+              }
+            };
+          }
+          return protocols !== undefined ? new NativeWebSocket(url, protocols) : new NativeWebSocket(url);
+        }
+        SafeWebSocket.prototype = NativeWebSocket.prototype;
+        SafeWebSocket.CONNECTING = NativeWebSocket.CONNECTING;
+        SafeWebSocket.OPEN = NativeWebSocket.OPEN;
+        SafeWebSocket.CLOSING = NativeWebSocket.CLOSING;
+        SafeWebSocket.CLOSED = NativeWebSocket.CLOSED;
+        window.WebSocket = SafeWebSocket;
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PanaBot VE — WhatsApp Bot, Membresías y Tienda BCV</title>
     <meta name="description" content="Sistema integral en español con Chatbot de WhatsApp impulsado por Gemini, tasa BCV automática o manual en tiempo real, control de membresías con confirmación humana de pagos, tienda de productos y recordatorios automáticos de renovación." />
@@ -15,6 +57,20 @@
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased">
     <div id="root"></div>
+    <script>
+      window.addEventListener('unhandledrejection', function (event) {
+        var reason = event && event.reason ? String(event.reason.stack || event.reason.message || event.reason) : '';
+        if (reason.indexOf('@vite/client') !== -1 || reason.indexOf('WebSocket') !== -1) {
+          event.preventDefault();
+        }
+      });
+      window.addEventListener('error', function (event) {
+        var filename = event && event.filename ? String(event.filename) : '';
+        if (filename.indexOf('@vite/client') !== -1) {
+          event.preventDefault();
+        }
+      }, true);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
