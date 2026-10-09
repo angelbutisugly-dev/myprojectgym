@@ -1,0 +1,6 @@
+{
+  "name": "PanaBot VE — WhatsApp Bot, Membresías y Tienda BCV",
+  "description": "Sistema integral en español con Chatbot de WhatsApp impulsado por Gemini, tasa BCV automática o manual en tiempo real, control de membresías con confirmación humana de pagos, tienda de productos y recordatorios automáticos de renovación.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

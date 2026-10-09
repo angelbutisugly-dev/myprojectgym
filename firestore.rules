@@ -1,0 +1,317 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Hardened Global Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() && request.auth.token.email == 'mendozaissrael@gmail.com' && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        isBootstrappedAdmin() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // 3. Entity Validation Blueprints (Anti-Update-Gap)
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['email', 'createdAt']) &&
+        data.keys().hasOnly(['email', 'createdAt']) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidExchangeSettings(data) {
+      return data.keys().hasAll([
+          'ownerId', 'mode', 'manualRate', 'activeRate', 'bcvRate', 'euroRate',
+          'businessName', 'scheduleText', 'membershipMonthlyUsd', 'membershipMonthlyBs',
+          'paymentMethodsText', 'ownerPhoneMemberships', 'ownerPhoneConsumables', 'ownerPhoneSupport',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'mode', 'manualRate', 'activeRate', 'bcvRate', 'euroRate',
+          'businessName', 'scheduleText', 'membershipMonthlyUsd', 'membershipMonthlyBs',
+          'paymentMethodsText', 'ownerPhoneMemberships', 'ownerPhoneConsumables', 'ownerPhoneSupport',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId == request.auth.uid &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.mode is string && data.mode.size() >= 4 && data.mode.size() <= 20 &&
+        (data.mode == 'auto_bcv' || data.mode == 'auto_euro' || data.mode == 'manual') &&
+        data.manualRate is number && data.manualRate > 0 && data.manualRate <= 1000000 &&
+        data.activeRate is number && data.activeRate > 0 && data.activeRate <= 1000000 &&
+        data.bcvRate is number && data.bcvRate > 0 && data.bcvRate <= 1000000 &&
+        data.euroRate is number && data.euroRate > 0 && data.euroRate <= 1000000 &&
+        data.businessName is string && data.businessName.size() >= 1 && data.businessName.size() <= 100 &&
+        data.scheduleText is string && data.scheduleText.size() >= 1 && data.scheduleText.size() <= 500 &&
+        data.membershipMonthlyUsd is number && data.membershipMonthlyUsd > 0 && data.membershipMonthlyUsd <= 100000 &&
+        data.membershipMonthlyBs is number && data.membershipMonthlyBs > 0 && data.membershipMonthlyBs <= 1000000000 &&
+        data.paymentMethodsText is string && data.paymentMethodsText.size() >= 1 && data.paymentMethodsText.size() <= 600 &&
+        data.ownerPhoneMemberships is string && data.ownerPhoneMemberships.size() >= 5 && data.ownerPhoneMemberships.size() <= 40 &&
+        data.ownerPhoneConsumables is string && data.ownerPhoneConsumables.size() >= 5 && data.ownerPhoneConsumables.size() <= 40 &&
+        data.ownerPhoneSupport is string && data.ownerPhoneSupport.size() >= 5 && data.ownerPhoneSupport.size() <= 80 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidMembership(data) {
+      return data.keys().hasAll([
+          'ownerId', 'phone', 'cedula', 'firstName', 'lastName',
+          'planName', 'status', 'priceUsd', 'rateBs', 'totalBs',
+          'paymentRef', 'paymentMethod', 'expiresAt', 'lastReminderSent',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'phone', 'cedula', 'firstName', 'lastName',
+          'planName', 'status', 'priceUsd', 'rateBs', 'totalBs',
+          'paymentRef', 'paymentMethod', 'expiresAt', 'lastReminderSent',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId == request.auth.uid &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.phone is string && data.phone.size() >= 0 && data.phone.size() <= 30 &&
+        data.cedula is string && data.cedula.size() >= 0 && data.cedula.size() <= 30 &&
+        data.firstName is string && data.firstName.size() >= 0 && data.firstName.size() <= 80 &&
+        data.lastName is string && data.lastName.size() >= 0 && data.lastName.size() <= 80 &&
+        data.planName is string && data.planName.size() >= 1 && data.planName.size() <= 120 &&
+        data.status is string && data.status.size() >= 5 && data.status.size() <= 30 &&
+        (data.status == 'pending_payment' || data.status == 'awaiting_profile' || data.status == 'active' || data.status == 'expiring_soon' || data.status == 'expired') &&
+        data.priceUsd is number && data.priceUsd >= 0 && data.priceUsd <= 100000 &&
+        data.rateBs is number && data.rateBs > 0 && data.rateBs <= 1000000 &&
+        data.totalBs is number && data.totalBs >= 0 && data.totalBs <= 1000000000 &&
+        data.paymentRef is string && data.paymentRef.size() >= 1 && data.paymentRef.size() <= 60 &&
+        data.paymentMethod is string && data.paymentMethod.size() >= 1 && data.paymentMethod.size() <= 100 &&
+        data.expiresAt is string && data.expiresAt.size() >= 1 && data.expiresAt.size() <= 40 &&
+        data.lastReminderSent is string && data.lastReminderSent.size() >= 0 && data.lastReminderSent.size() <= 40 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidShopOrder(data) {
+      return data.keys().hasAll([
+          'ownerId', 'phone', 'itemsSummary', 'categoryGroup', 'status',
+          'totalUsd', 'totalBs', 'paymentRef', 'pagoMovilTarget', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'phone', 'itemsSummary', 'categoryGroup', 'status',
+          'totalUsd', 'totalBs', 'paymentRef', 'pagoMovilTarget', 'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId == request.auth.uid &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 30 &&
+        data.itemsSummary is string && data.itemsSummary.size() >= 1 && data.itemsSummary.size() <= 250 &&
+        data.categoryGroup is string && data.categoryGroup.size() >= 4 && data.categoryGroup.size() <= 20 &&
+        (data.categoryGroup == 'consumibles' || data.categoryGroup == 'ropa') &&
+        data.status is string && data.status.size() >= 5 && data.status.size() <= 25 &&
+        (data.status == 'pending_approval' || data.status == 'confirmed' || data.status == 'rejected') &&
+        data.totalUsd is number && data.totalUsd >= 0 && data.totalUsd <= 100000 &&
+        data.totalBs is number && data.totalBs >= 0 && data.totalBs <= 1000000000 &&
+        data.paymentRef is string && data.paymentRef.size() >= 1 && data.paymentRef.size() <= 60 &&
+        data.pagoMovilTarget is string && data.pagoMovilTarget.size() >= 1 && data.pagoMovilTarget.size() <= 160 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'category', 'description',
+          'basePriceUsd', 'priceBs', 'rateMode', 'isCustomBs', 'stock', 'available', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'name', 'category', 'description',
+          'basePriceUsd', 'priceBs', 'rateMode', 'isCustomBs', 'stock', 'available', 'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId == request.auth.uid &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.category is string && data.category.size() >= 4 && data.category.size() <= 30 &&
+        (data.category == 'agua_hidratacion' || data.category == 'jugos_saludables' || data.category == 'alimentos' || data.category == 'ropa_deportiva' || data.category == 'membresias') &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 300 &&
+        data.basePriceUsd is number && data.basePriceUsd >= 0 && data.basePriceUsd <= 100000 &&
+        data.priceBs is number && data.priceBs >= 0 && data.priceBs <= 1000000000 &&
+        data.rateMode is string && data.rateMode.size() >= 4 && data.rateMode.size() <= 20 &&
+        (data.rateMode == 'auto_bcv' || data.rateMode == 'auto_euro' || data.rateMode == 'manual') &&
+        data.isCustomBs is bool &&
+        data.stock is number && data.stock >= 0 && data.stock <= 1000000 &&
+        data.available is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['ownerId', 'phone', 'sender', 'text', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['ownerId', 'phone', 'sender', 'text', 'createdAt', 'updatedAt']) &&
+        data.ownerId == request.auth.uid &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 30 &&
+        data.sender is string && data.sender.size() >= 3 && data.sender.size() <= 15 &&
+        (data.sender == 'client' || data.sender == 'bot' || data.sender == 'system') &&
+        data.text is string && data.text.size() >= 1 && data.text.size() <= 2000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // 4. Collection Rules
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if isSignedIn() && existing().email == request.auth.token.email;
+      allow create: if isBootstrappedAdmin() && isValidId(adminId) && request.auth.uid == adminId &&
+        isValidAdminRecord(incoming()) &&
+        incoming().email == request.auth.token.email &&
+        incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /exchange_settings/{settingId} {
+      allow get: if isSignedIn() && isValidId(settingId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isSignedIn() && isValidId(settingId) &&
+        isValidExchangeSettings(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isSignedIn() && isValidId(settingId) &&
+        isValidExchangeSettings(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          (
+            existing().ownerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'mode', 'manualRate', 'activeRate', 'bcvRate', 'euroRate',
+              'businessName', 'scheduleText', 'membershipMonthlyUsd', 'membershipMonthlyBs',
+              'paymentMethodsText', 'ownerPhoneMemberships', 'ownerPhoneConsumables', 'ownerPhoneSupport',
+              'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(settingId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /memberships/{membershipId} {
+      allow get: if isSignedIn() && isValidId(membershipId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isSignedIn() && isValidId(membershipId) &&
+        isValidMembership(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isSignedIn() && isValidId(membershipId) &&
+        isValidMembership(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (existing().status != 'expired' || incoming().status == 'active' || incoming().status == 'pending_payment' || isAdmin()) &&
+        (
+          isAdmin() ||
+          (
+            existing().ownerId == request.auth.uid &&
+            (
+              incoming().diff(existing()).affectedKeys().hasOnly(['status', 'expiresAt', 'rateBs', 'totalBs', 'updatedAt']) ||
+              incoming().diff(existing()).affectedKeys().hasOnly(['cedula', 'firstName', 'lastName', 'status', 'updatedAt']) ||
+              incoming().diff(existing()).affectedKeys().hasOnly(['lastReminderSent', 'status', 'updatedAt']) ||
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'phone', 'cedula', 'firstName', 'lastName', 'planName', 'status',
+                'priceUsd', 'rateBs', 'totalBs', 'paymentRef', 'paymentMethod',
+                'expiresAt', 'lastReminderSent', 'updatedAt'
+              ])
+            )
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(membershipId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /shop_orders/{orderId} {
+      allow get: if isSignedIn() && isValidId(orderId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isSignedIn() && isValidId(orderId) &&
+        isValidShopOrder(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isSignedIn() && isValidId(orderId) &&
+        isValidShopOrder(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (existing().status == 'pending_approval' || isAdmin()) &&
+        (
+          isAdmin() ||
+          (
+            existing().ownerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'paymentRef', 'totalUsd', 'totalBs', 'pagoMovilTarget', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(orderId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /products/{productId} {
+      allow get: if isSignedIn() && isValidId(productId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isSignedIn() && isValidId(productId) &&
+        isValidProduct(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isSignedIn() && isValidId(productId) &&
+        isValidProduct(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          (
+            existing().ownerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'category', 'description', 'basePriceUsd', 'priceBs', 'rateMode', 'isCustomBs', 'stock', 'available', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(productId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    match /chat_messages/{messageId} {
+      allow get: if isSignedIn() && isValidId(messageId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isSignedIn() && isValidId(messageId) &&
+        isValidChatMessage(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isSignedIn() && isValidId(messageId) &&
+        isValidChatMessage(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isAdmin() ||
+          (
+            existing().ownerId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['text', 'updatedAt'])
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(messageId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+  }
+}

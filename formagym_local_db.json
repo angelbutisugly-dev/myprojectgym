@@ -1,0 +1,32 @@
+{
+  "settings": {
+    "id": "default_settings",
+    "ownerId": "local_owner",
+    "mode": "auto_euro",
+    "manualRate": 70,
+    "activeRate": 979.6,
+    "bcvRate": 874.73,
+    "euroRate": 979.6,
+    "businessName": "FormaGym",
+    "scheduleText": "Lunes a Viernes de 7:00 AM a 9:00 PM | Sábados (horario especial aparte) de 10:00 AM a 3:00 PM | Domingos cerrado.",
+    "membershipMonthlyUsd": 25,
+    "membershipMonthlyBs": 24490,
+    "paymentMethodsText": "Para pagos de Jugos, Bebidas, Comida\nBanco de Venezuela\n17636777\n04246559787 \nPara pagos de Mensualidad y Ropa\nBanco de Venezuela \n18318153 \n04146734866.",
+    "ownerPhoneMemberships": "+58 414-6734866",
+    "ownerPhoneConsumables": "+58 424-6559787",
+    "ownerPhoneSupport": "+58 414-6734866",
+    "adminNumbers": "+58 414-6589708",
+    "botWhatsAppPhone": "+58 414-6734866"
+  },
+  "memberships": [],
+  "deletedMemberships": [],
+  "deletedProducts": [],
+  "deletedShopOrders": [],
+  "shopOrders": [],
+  "products": [],
+  "supportSessions": [],
+  "updatedAt": "2026-10-08T21:38:00.000Z",
+  "savedAt": "2026-10-08T21:38:00.000Z",
+  "botRunning247": true,
+  "updatedAtMs": 1791496000000
+}

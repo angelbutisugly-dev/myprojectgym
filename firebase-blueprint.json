@@ -1,0 +1,496 @@
+{
+  "entities": {
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrator record keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Verified administrator email address.",
+          "minLength": 3,
+          "maxLength": 150
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when admin record was created."
+        }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "ExchangeSettings": {
+      "title": "ExchangeSettings",
+      "description": "Configuration for FormaGym exchange rates, schedule, and designated forwarding phone numbers.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the business owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "mode": {
+          "type": "string",
+          "description": "Default exchange rate mode.",
+          "enum": ["auto_bcv", "auto_euro", "manual"],
+          "minLength": 4,
+          "maxLength": 20
+        },
+        "manualRate": {
+          "type": "number",
+          "description": "Manual VES exchange rate override."
+        },
+        "activeRate": {
+          "type": "number",
+          "description": "Currently active VES exchange rate."
+        },
+        "bcvRate": {
+          "type": "number",
+          "description": "Official BCV USD to VES rate."
+        },
+        "euroRate": {
+          "type": "number",
+          "description": "Official BCV EUR to VES rate."
+        },
+        "businessName": {
+          "type": "string",
+          "description": "Chat name of the gym (FormaGym).",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "scheduleText": {
+          "type": "string",
+          "description": "Opening and closing schedule.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "membershipMonthlyUsd": {
+          "type": "number",
+          "description": "Base monthly membership price in USD."
+        },
+        "membershipMonthlyBs": {
+          "type": "number",
+          "description": "Monthly membership price in Bolivares."
+        },
+        "paymentMethodsText": {
+          "type": "string",
+          "description": "Pago Movil accounts for drinks/food and memberships/clothes.",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "ownerPhoneMemberships": {
+          "type": "string",
+          "description": "Designated phone number to receive membership & clothes payment photos.",
+          "minLength": 5,
+          "maxLength": 40
+        },
+        "ownerPhoneConsumables": {
+          "type": "string",
+          "description": "Designated phone number to receive juices, drinks & food payment photos.",
+          "minLength": 5,
+          "maxLength": 40
+        },
+        "ownerPhoneSupport": {
+          "type": "string",
+          "description": "Designated phone number(s) to receive forwarded support issues.",
+          "minLength": 5,
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "mode",
+        "manualRate",
+        "activeRate",
+        "bcvRate",
+        "euroRate",
+        "businessName",
+        "scheduleText",
+        "membershipMonthlyUsd",
+        "membershipMonthlyBs",
+        "paymentMethodsText",
+        "ownerPhoneMemberships",
+        "ownerPhoneConsumables",
+        "ownerPhoneSupport",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Membership": {
+      "title": "Membership",
+      "description": "Member record tracking phone number, payment verification, receipt photo, Cedula ID, name, last name, and renewal expiration.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the business owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Client WhatsApp phone number.",
+          "minLength": 0,
+          "maxLength": 30
+        },
+        "cedula": {
+          "type": "string",
+          "description": "Venezuelan national ID (Cedula de Identidad).",
+          "minLength": 0,
+          "maxLength": 30
+        },
+        "firstName": {
+          "type": "string",
+          "description": "Client first name.",
+          "minLength": 0,
+          "maxLength": 80
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Client last name.",
+          "minLength": 0,
+          "maxLength": 80
+        },
+        "planName": {
+          "type": "string",
+          "description": "Name of the membership plan or package paid.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "status": {
+          "type": "string",
+          "description": "Lifecycle status of the membership.",
+          "enum": [
+            "pending_payment",
+            "awaiting_profile",
+            "active",
+            "expiring_soon",
+            "expired"
+          ],
+          "minLength": 5,
+          "maxLength": 30
+        },
+        "priceUsd": {
+          "type": "number",
+          "description": "Base price in USD."
+        },
+        "rateBs": {
+          "type": "number",
+          "description": "Exchange rate applied."
+        },
+        "totalBs": {
+          "type": "number",
+          "description": "Total amount in Bolivares."
+        },
+        "paymentRef": {
+          "type": "string",
+          "description": "Pago Movil reference number (e.g. 007575948032).",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Payment channel and redirected owner phone.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "expiresAt": {
+          "type": "string",
+          "description": "ISO date string when membership expires.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "lastReminderSent": {
+          "type": "string",
+          "description": "ISO date string of last automated renewal notification.",
+          "minLength": 0,
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "phone",
+        "cedula",
+        "firstName",
+        "lastName",
+        "planName",
+        "status",
+        "priceUsd",
+        "rateBs",
+        "totalBs",
+        "paymentRef",
+        "paymentMethod",
+        "expiresAt",
+        "lastReminderSent",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ShopOrder": {
+      "title": "ShopOrder",
+      "description": "Pending or confirmed Pago Movil order for shop items (drinks, healthy juices, food, clothes) with redirected owner phone.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the business owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Client WhatsApp phone number.",
+          "minLength": 5,
+          "maxLength": 30
+        },
+        "itemsSummary": {
+          "type": "string",
+          "description": "Description of drinks, food, or clothes paid.",
+          "minLength": 1,
+          "maxLength": 250
+        },
+        "categoryGroup": {
+          "type": "string",
+          "description": "Whether payment goes to Jugos/Bebidas/Comida or Ropa.",
+          "enum": ["consumibles", "ropa"],
+          "minLength": 4,
+          "maxLength": 20
+        },
+        "status": {
+          "type": "string",
+          "description": "Human approval status.",
+          "enum": ["pending_approval", "confirmed", "rejected"],
+          "minLength": 5,
+          "maxLength": 25
+        },
+        "totalUsd": {
+          "type": "number",
+          "description": "Total order price in USD."
+        },
+        "totalBs": {
+          "type": "number",
+          "description": "Total order price in Bolivares."
+        },
+        "paymentRef": {
+          "type": "string",
+          "description": "Pago Movil reference (e.g. 007575948032).",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "pagoMovilTarget": {
+          "type": "string",
+          "description": "Target Pago Movil account and redirected phone number.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "phone",
+        "itemsSummary",
+        "categoryGroup",
+        "status",
+        "totalUsd",
+        "totalBs",
+        "paymentRef",
+        "pagoMovilTarget",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Shop inventory item with its own selected exchange rate mode (BCV, Euro, Manual) and independently editable USD and Bs prices.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the business owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Product name in Spanish.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category in the shop.",
+          "enum": [
+            "agua_hidratacion",
+            "jugos_saludables",
+            "alimentos",
+            "ropa_deportiva",
+            "membresias"
+          ],
+          "minLength": 4,
+          "maxLength": 30
+        },
+        "description": {
+          "type": "string",
+          "description": "Product details.",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "basePriceUsd": {
+          "type": "number",
+          "description": "Editable price in USD."
+        },
+        "priceBs": {
+          "type": "number",
+          "description": "Editable price in Bolivares."
+        },
+        "rateMode": {
+          "type": "string",
+          "description": "Specific exchange rate mode assigned to this product.",
+          "enum": ["auto_bcv", "auto_euro", "manual"],
+          "minLength": 4,
+          "maxLength": 20
+        },
+        "isCustomBs": {
+          "type": "boolean",
+          "description": "True when USD and Bs prices were edited independently without matching the product's assigned rate."
+        },
+        "stock": {
+          "type": "number",
+          "description": "Available inventory count."
+        },
+        "available": {
+          "type": "boolean",
+          "description": "Whether the product is active for sale."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "category",
+        "description",
+        "basePriceUsd",
+        "priceBs",
+        "rateMode",
+        "isCustomBs",
+        "stock",
+        "available",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "WhatsApp message log for conversations with clients.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the business owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Client WhatsApp phone number.",
+          "minLength": 5,
+          "maxLength": 30
+        },
+        "sender": {
+          "type": "string",
+          "description": "Who sent the message.",
+          "enum": ["client", "bot", "system"],
+          "minLength": 3,
+          "maxLength": 15
+        },
+        "text": {
+          "type": "string",
+          "description": "Message content in Spanish.",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": ["ownerId", "phone", "sender", "text", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": "AdminRecord",
+      "description": "Trusted administrator records."
+    },
+    "/exchange_settings/{settingId}": {
+      "schema": "ExchangeSettings",
+      "description": "FormaGym rates, schedule, and designated forwarding numbers."
+    },
+    "/memberships/{membershipId}": {
+      "schema": "Membership",
+      "description": "Client memberships and payment confirmation states."
+    },
+    "/shop_orders/{orderId}": {
+      "schema": "ShopOrder",
+      "description": "Non-membership Pago Movil orders requiring human approval."
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Shop products with per-product rate mode and editable USD/Bs prices."
+    },
+    "/chat_messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "WhatsApp conversation history."
+    }
+  }
+}
