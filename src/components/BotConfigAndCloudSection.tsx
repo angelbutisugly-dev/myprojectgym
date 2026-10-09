@@ -126,11 +126,120 @@ export const BotConfigAndCloudSection: React.FC<BotConfigAndCloudSectionProps> =
   const [botRunning247, setBotRunning247] = useState<boolean>(true);
   const [uptimeSeconds, setUptimeSeconds] = useState<number>(0);
   const [isToggling247, setIsToggling247] = useState<boolean>(false);
+  const [localUrl, setLocalUrl] = useState<string>('http://localhost:3000');
+  const [lanUrl, setLanUrl] = useState<string>('http://192.168.1.100:3000');
+  const [guideTab, setGuideTab] = useState<'local' | 'hosting' | 'sync'>('local');
+  const [copiedStepKey, setCopiedStepKey] = useState<string | null>(null);
   const liveWebUrl =
     typeof window !== 'undefined' && window.location?.origin
       ? window.location.origin
       : 'https://ais-dev-ymynqlimtqabrw24fwdz5p-878245638537.us-east1.run.app';
   const standaloneFullUrl = `${liveWebUrl}/?standalone=1`;
+
+  const copyStepWithFeedback = (key: string, text: string) => {
+    copyToClipboardSafe(text);
+    setCopiedStepKey(key);
+    setTimeout(() => {
+      setCopiedStepKey((prev) => (prev === key ? null : prev));
+    }, 2200);
+  };
+
+  const handleDownloadWindowsLauncher = () => {
+    const batContent = `@echo off
+title FormaGym - Servidor Local y Bot de WhatsApp 24/7
+echo ================================================================
+echo   FORMAGYM - SISTEMA WEB + BOT DE WHATSAPP (MODO LOCAL)
+echo ================================================================
+echo.
+
+where node >nul 2>nul
+if %errorlevel% neq 0 (
+    echo [ERROR] Node.js no esta instalado en esta computadora.
+    echo Por favor descarga e instala Node.js LTS desde: https://nodejs.org
+    pause
+    exit /b 1
+)
+
+if not exist "node_modules" (
+    echo [1/2] Instalando dependencias por primera vez (esto toma 1 minuto)...
+    call npm install
+)
+
+echo.
+echo [2/2] Iniciando servidor de FormaGym en http://localhost:3000 ...
+echo       Puedes abrir http://localhost:3000 en tu navegador.
+echo       No cierres esta ventana mientras quieras que el bot siga activo.
+echo.
+start "" "http://localhost:3000"
+call npm run dev
+pause
+`;
+    const blob = new Blob([batContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'INICIAR_LOCAL_WINDOWS.bat';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadUnixLauncher = () => {
+    const shContent = `#!/usr/bin/env bash
+set -e
+echo "================================================================"
+echo "  FORMAGYM - SISTEMA WEB + BOT DE WHATSAPP (MODO LOCAL)"
+echo "================================================================"
+if ! command -v node >/dev/null 2>&1; then
+  echo "[ERROR] Node.js no está instalado. Instálalo desde https://nodejs.org"
+  exit 1
+fi
+if [ ! -d "node_modules" ]; then
+  echo "[1/2] Instalando dependencias por primera vez..."
+  npm install
+fi
+echo "[2/2] Iniciando servidor de FormaGym en http://localhost:3000 ..."
+npm run dev
+`;
+    const blob = new Blob([shContent], { type: 'text/x-sh;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'iniciar_local_mac_linux.sh';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadDockerfile = () => {
+    const dockerContent = `FROM node:22-slim
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+ENV NODE_ENV=production
+ENV PORT=3000
+EXPOSE 3000
+
+CMD ["npx", "tsx", "server.ts"]
+`;
+    const blob = new Blob([dockerContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Dockerfile';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const copyToClipboardSafe = (text: string) => {
     try {
@@ -253,6 +362,12 @@ export const BotConfigAndCloudSection: React.FC<BotConfigAndCloudSectionProps> =
         }
         if (typeof sysData.uptimeSeconds === 'number') {
           setUptimeSeconds(sysData.uptimeSeconds);
+        }
+        if (sysData.localUrl) {
+          setLocalUrl(String(sysData.localUrl));
+        }
+        if (sysData.lanUrl) {
+          setLanUrl(String(sysData.lanUrl));
         }
       }
     } catch {
@@ -893,6 +1008,394 @@ iniciarBotFormaGym();
             </span>
           </div>
         </div>
+      </div>
+
+      {/* 0B. COMPLETE GUIDE: HOW TO RUN LOCALLY ON PC OR HOST 24/7 ON ANY CLOUD SERVER */}
+      <div className="bg-white border-2 border-emerald-200 rounded-xl p-6 space-y-5 shadow-2xs">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
+          <div className="space-y-1">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 text-[11px] font-bold uppercase tracking-wider">
+              <HardDrive className="w-3.5 h-3.5 text-emerald-700" />
+              Guía Oficial: Ejecución Local (PC/Laptop) y Hosting Propio 24/7
+            </span>
+            <h2 className="text-lg font-bold text-slate-900">
+              Cómo Correr {settings.businessName} en tu Computadora Local o Alojarlo en Internet (Hosting)
+            </h2>
+            <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
+              Este programa está preparado para funcionar de <strong>3 formas</strong>: directamente con el enlace web de arriba, instalado en la <strong>computadora del gimnasio (Modo Local)</strong>, o subido a tu propio <strong>servidor de Hosting 24/7 (Railway, Render o VPS)</strong>. Selecciona una pestaña para ver el paso a paso:
+            </p>
+          </div>
+
+          {/* Sub-tabs for the Guide */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setGuideTab('local')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                guideTab === 'local'
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              💻 1. Correr en tu PC (Local)
+            </button>
+            <button
+              type="button"
+              onClick={() => setGuideTab('hosting')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                guideTab === 'hosting'
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              ☁️ 2. Alojar 24/7 en Hosting Web
+            </button>
+            <button
+              type="button"
+              onClick={() => setGuideTab('sync')}
+              className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                guideTab === 'sync'
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              🔄 3. Respaldo y Archivos Clave
+            </button>
+          </div>
+        </div>
+
+        {/* TAB 1: LOCAL EXECUTION ON WINDOWS / MAC / LINUX */}
+        {guideTab === 'local' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Step 1 */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
+                    PASO 1
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-500">Solo la primera vez</span>
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Descargar el Proyecto e Instalar Node.js
+                </h3>
+                <ol className="text-xs text-slate-600 space-y-1.5 list-decimal list-inside leading-relaxed">
+                  <li>
+                    Descarga e instala <strong>Node.js (Versión LTS)</strong> desde{' '}
+                    <a
+                      href="https://nodejs.org"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-emerald-700 font-bold underline"
+                    >
+                      nodejs.org
+                    </a>
+                    .
+                  </li>
+                  <li>
+                    Descarga el código completo de este proyecto (en formato <strong>.ZIP</strong> o por GitHub) y descomprímelo en una carpeta en tu computadora (por ejemplo en el Escritorio: <code className="font-mono bg-slate-200 px-1 rounded">FormaGym</code>).
+                  </li>
+                </ol>
+              </div>
+
+              {/* Step 2 */}
+              <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="px-2 py-0.5 bg-emerald-700 text-white rounded text-[11px] font-bold">
+                    PASO 2 (OPCIÓN RÁPIDA 1 CLIC)
+                  </span>
+                  <span className="text-[11px] font-bold text-emerald-800">Recomendado</span>
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Iniciar con Doble Clic (Sin escribir comandos)
+                </h3>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  El proyecto ya incluye el archivo <code className="font-mono font-bold">INICIAR_LOCAL_WINDOWS.bat</code> (y también puedes descargarlo aquí abajo). Ponlo dentro de la carpeta del proyecto y hazle <strong>doble clic</strong>: instalará todo solo y abrirá el programa.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleDownloadWindowsLauncher}
+                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Descargar Iniciador Windows (.BAT)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadUnixLauncher}
+                    className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Mac / Linux (.SH)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
+                    PASO 3 (POR TERMINAL)
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-500">CMD / PowerShell</span>
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Comandos para Correrlo Manualmente
+                </h3>
+                <p className="text-xs text-slate-600">
+                  Si prefieres abrir la terminal dentro de la carpeta del proyecto, ejecuta estos dos comandos:
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
+                    <span>npm install</span>
+                    <button
+                      type="button"
+                      onClick={() => copyStepWithFeedback('cmd_install', 'npm install')}
+                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'cmd_install' ? 'Copiado ✓' : 'Copiar'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
+                    <span>npm run dev</span>
+                    <button
+                      type="button"
+                      onClick={() => copyStepWithFeedback('cmd_dev', 'npm run dev')}
+                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'cmd_dev' ? 'Copiado ✓' : 'Copiar'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Local URLs Box */}
+            <div className="bg-slate-900 text-white rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div className="space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+                  Direcciones cuando corre en tu Computadora Local
+                </span>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Una vez iniciado en tu PC, entra a <strong className="text-white">http://localhost:3000</strong>. Además, cualquier teléfono o tablet conectado al <strong>mismo Wi-Fi del gimnasio</strong> puede entrar usando la dirección IP de tu computadora:
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                    En la misma PC:
+                  </span>
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <code className="text-xs font-mono text-emerald-300">{localUrl}</code>
+                    <button
+                      type="button"
+                      onClick={() => copyStepWithFeedback('local_url', localUrl)}
+                      className="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'local_url' ? 'Copiado' : 'Copiar'}
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                    Desde Celulares en el Wi-Fi:
+                  </span>
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <code className="text-xs font-mono text-sky-300">{lanUrl}</code>
+                    <button
+                      type="button"
+                      onClick={() => copyStepWithFeedback('lan_url', lanUrl)}
+                      className="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'lan_url' ? 'Copiado' : 'Copiar'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: CLOUD HOSTING 24/7 (RAILWAY / RENDER / VPS / DOCKER) */}
+        {guideTab === 'hosting' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Option A: Railway / Render */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-0.5 bg-emerald-700 text-white rounded text-[11px] font-bold">
+                    OPCIÓN A: HOSTING EN LA NUBE (RAILWAY / RENDER)
+                  </span>
+                  <span className="text-[11px] font-semibold text-emerald-800">24/7 sin tener la PC prendida</span>
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Subir a Railway.app o Render.com en 3 minutos
+                </h3>
+                <ol className="text-xs text-slate-600 space-y-1.5 list-decimal list-inside leading-relaxed">
+                  <li>
+                    Sube este proyecto a un repositorio privado en tu cuenta de <strong>GitHub</strong>.
+                  </li>
+                  <li>
+                    Crea una cuenta en <strong>Railway.app</strong> o <strong>Render.com</strong>, elige <strong>"New Web Service"</strong> y selecciona tu repositorio de GitHub.
+                  </li>
+                  <li>
+                    Si el hosting te pide los comandos de compilación e inicio, copia y pega exactamente estos:
+                  </li>
+                </ol>
+
+                <div className="space-y-2 pt-1">
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Build Command (Comando de construcción):
+                    </span>
+                    <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
+                      <span>npm install && npm run build</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          copyStepWithFeedback('host_build', 'npm install && npm run build')
+                        }
+                        className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                      >
+                        {copiedStepKey === 'host_build' ? 'Copiado ✓' : 'Copiar'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Start Command (Comando de inicio 24/7):
+                    </span>
+                    <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
+                      <span>npm run host</span>
+                      <button
+                        type="button"
+                        onClick={() => copyStepWithFeedback('host_start', 'npm run host')}
+                        className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                      >
+                        {copiedStepKey === 'host_start' ? 'Copiado ✓' : 'Copiar'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Option B: VPS / PM2 / Docker */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="px-2.5 py-0.5 bg-slate-900 text-white rounded text-[11px] font-bold">
+                    OPCIÓN B: SERVIDOR VPS (UBUNTU / DIGITALOCEAN / DOCKER)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleDownloadDockerfile}
+                    className="text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Download className="w-3 h-3" />
+                    <span>Descargar Dockerfile</span>
+                  </button>
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Mantener encendido para siempre con PM2 o Docker
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Si usas un VPS con Linux o quieres dejarlo en segundo plano con auto-reinicio automático si se va la luz, instala <strong>PM2</strong> y ejecútalo así:
+                </p>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
+                    <span>npm install -g pm2</span>
+                    <button
+                      type="button"
+                      onClick={() => copyStepWithFeedback('pm2_1', 'npm install -g pm2')}
+                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'pm2_1' ? 'Copiado ✓' : 'Copiar'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
+                    <span>pm2 start "npm run host" --name formagym</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyStepWithFeedback('pm2_2', 'pm2 start "npm run host" --name formagym')
+                      }
+                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'pm2_2' ? 'Copiado ✓' : 'Copiar'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between bg-slate-900 text-emerald-300 px-3 py-1.5 rounded-lg font-mono text-xs">
+                    <span>pm2 save && pm2 startup</span>
+                    <button
+                      type="button"
+                      onClick={() => copyStepWithFeedback('pm2_3', 'pm2 save && pm2 startup')}
+                      className="text-[11px] text-white bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      {copiedStepKey === 'pm2_3' ? 'Copiado ✓' : 'Copiar'}
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-500">
+                  <strong>Variables de entorno (.env):</strong> Opcionalmente agrega <code className="font-mono">GEMINI_API_KEY</code> para activar el escaneo visual de comprobantes con IA. El puerto se asigna automáticamente (<code className="font-mono">PORT=3000</code>).
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: SYNCING & BACKUP BETWEEN LOCAL, HOSTING & AI STUDIO */}
+        {guideTab === 'sync' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                <h3 className="text-sm font-bold text-slate-900">
+                  1. ¿Dónde se guardan tus datos y la sesión de WhatsApp?
+                </h3>
+                <ul className="text-xs text-slate-600 space-y-2 leading-relaxed">
+                  <li>
+                    • <code className="font-mono font-bold text-slate-900 bg-slate-200 px-1.5 py-0.5 rounded">formagym_local_db.json</code>: Archivo automático en la carpeta raíz del proyecto donde se guardan todas tus membresías, inscripciones vitalicias, productos, tasas, precios y reportes eliminados.
+                  </li>
+                  <li>
+                    • <code className="font-mono font-bold text-slate-900 bg-slate-200 px-1.5 py-0.5 rounded">baileys_auth_info/</code>: Carpeta donde se guarda la vinculación de tu WhatsApp para que no tengas que volver a escanear el código QR cuando reinicies la PC o el servidor.
+                  </li>
+                  <li>
+                    • <strong>Firebase Cloud Firestore:</strong> También sincroniza tus registros en la nube automáticamente para que nunca se pierdan.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-3">
+                <h3 className="text-sm font-bold text-slate-900">
+                  2. Descargar Copia Completa Ahora Mismo
+                </h3>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Puedes descargar en cualquier momento toda la base de datos del gimnasio en Excel (.CSV) o en formato .JSON para llevarla a tu PC local o guardarla como respaldo:
+                </p>
+                <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={onDownloadOrganizedExcel}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>Descargar Base de Datos en Excel (.CSV)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onDownloadOrganizedJson}
+                    className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Descargar Respaldo Completo (.JSON)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 1. LIVE BAILEYS WHATSAPP CONNECTION ENGINE (DIRECT QR OR PAIRING CODE + STEP-BY-STEP GUIDE) */}

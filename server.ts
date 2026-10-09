@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
@@ -61,13 +62,29 @@ function writeLocalDiskDb(data: Record<string, unknown>): void {
 }
 
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY || 'local-optional-key',
   httpOptions: {
     headers: {
       'User-Agent': 'aistudio-build',
     },
   },
 });
+
+function getLocalNetworkIp(): string {
+  try {
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name] || []) {
+        if (net.family === 'IPv4' && !net.internal) {
+          return net.address;
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return '127.0.0.1';
+}
 
 export interface ScannedReceiptData {
   operationNumber: string | null;
@@ -5021,6 +5038,8 @@ async function startServer() {
     const ownerMem = serverSyncedContext.ownerPhoneMemberships || '+58 414-6734866';
     const ownerCons = serverSyncedContext.ownerPhoneConsumables || '+58 424-6559787';
     const pending = getUnifiedPendingPayments(ownerMem, ownerCons);
+    const activePort = Number(process.env.PORT) || 3000;
+    const lanIp = getLocalNetworkIp();
     res.json({
       ok: true,
       botRunning247,
@@ -5033,6 +5052,8 @@ async function startServer() {
         ? serverSyncedContext.memberships.length
         : 0,
       pendingCount: pending.length,
+      localUrl: `http://localhost:${activePort}`,
+      lanUrl: `http://${lanIp}:${activePort}`,
       standaloneProdUrl: 'https://ais-pre-ymynqlimtqabrw24fwdz5p-878245638537.us-east1.run.app',
       standaloneDevUrl: 'https://ais-dev-ymynqlimtqabrw24fwdz5p-878245638537.us-east1.run.app',
     });
@@ -5353,13 +5374,19 @@ async function startServer() {
     });
   }
 
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
   // Auto-resume Baileys session if credentials already exist on disk and 24/7 mode is enabled
   if (botRunning247 && fs.existsSync(path.join(BAILEYS_AUTH_DIR, 'creds.json'))) {
     startBaileysConnection().catch(() => {});
   }
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`FormaGym Server running 24/7 on http://0.0.0.0:${PORT}`);
+    const lanIp = getLocalNetworkIp();
+    console.log(`\n=============================================================`);
+    console.log(`🏋️‍♂️ FormaGym — Sistema Web + Bot WhatsApp 24/7 Activo`);
+    console.log(`💻 En esta computadora (Local): http://localhost:${PORT}`);
+    console.log(`📱 En tu red Wi-Fi / Celular:   http://${lanIp}:${PORT}`);
+    console.log(`💾 Base de datos en disco:      ${LOCAL_DB_PATH}`);
+    console.log(`=============================================================\n`);
   });
 }
 
