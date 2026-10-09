@@ -1,39 +1,47 @@
 @echo off
 chcp 65001 >nul 2>nul
 cd /d "%~dp0"
-title FormaGym - Servidor Local y Bot de WhatsApp 24/7
+title FormaGym - Servidor Local + Baileys + PM2 24/7
 echo ================================================================
-echo   FORMAGYM - SISTEMA WEB + BOT DE WHATSAPP (MODO LOCAL)
+echo   FORMAGYM - SISTEMA WEB + BOT LOCAL BAILEYS + PM2 (24/7)
 echo ================================================================
 echo.
 
 where node >nul 2>nul
 if %errorlevel% neq 0 (
-    echo [AVISO] Node.js no esta instalado en esta computadora.
-    echo Intentando instalar Node.js LTS automaticamente...
-    winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
-    echo Descarga e instala Node.js LTS desde: https://nodejs.org
+    echo [ERROR] Node.js no esta instalado en esta computadora.
+    echo Por favor descarga e instala Node.js LTS desde: https://nodejs.org
     start "" "https://nodejs.org"
     pause
     exit /b 1
 )
 
-if not exist ".env" (
-    if exist ".env.example" (
-        copy /Y ".env.example" ".env" >nul 2>nul
+if not exist "node_modules" (
+    echo [1/4] Instalando dependencias por primera vez (esto toma 1 minuto)...
+    call npm install
+    if %errorlevel% neq 0 (
+        call npm install --legacy-peer-deps
     )
 )
 
-if not exist "node_modules" (
-    echo [1/2] Instalando dependencias por primera vez (esto toma 1 minuto)...
-    call npm install
+where pm2 >nul 2>nul
+if %errorlevel% neq 0 (
+    echo [2/4] Instalando PM2 para mantener el servidor y Baileys activos 24/7...
+    call npm install -g pm2
 )
 
 echo.
-echo [2/2] Iniciando servidor de FormaGym en http://localhost:3000 ...
-echo       Se abrira automaticamente http://localhost:3000 en tu navegador.
-echo       No cierres esta ventana mientras quieras que el bot siga activo.
-echo.
-start "" cmd /c "timeout /t 3 /nobreak >nul & start http://localhost:3000"
-call npm run dev
+echo [3/4] Activando Servidor + Bot Local Baileys con PM2 en http://localhost:3000 ...
+set AUTO_START_BAILEYS=true
+where pm2 >nul 2>nul
+if %errorlevel% equ 0 (
+    call pm2 start ecosystem.config.cjs --update-env
+    call pm2 save
+    echo [4/4] Abriendo http://localhost:3000 y mostrando registros en vivo de Baileys...
+    start "" "http://localhost:3000"
+    call pm2 logs formagym-bot-24-7 --lines 40
+) else (
+    start "" "http://localhost:3000"
+    call npx tsx server.ts
+)
 pause

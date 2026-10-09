@@ -11,7 +11,13 @@
     "host": "vite build && tsx server.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "pm2:start": "pm2 start ecosystem.config.cjs --update-env && pm2 save",
+    "pm2:stop": "pm2 stop formagym-bot-24-7",
+    "pm2:delete": "pm2 delete formagym-bot-24-7",
+    "pm2:restart": "pm2 restart formagym-bot-24-7 --update-env",
+    "pm2:logs": "pm2 logs formagym-bot-24-7",
+    "pm2:status": "pm2 status"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -38,7 +44,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.0",
     "eslint": "^10.1.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",

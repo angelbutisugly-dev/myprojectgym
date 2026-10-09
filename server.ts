@@ -1028,6 +1028,23 @@ async function startBaileysConnection(phoneForPairing?: string) {
     baileysStatusMessage = 'Iniciando conexión segura con WhatsApp mediante Baileys...';
     addBaileysLog('Iniciando cliente @whiskeysockets/baileys...');
 
+    // If user previously linked WhatsApp in ./sesion_whatsapp_formagym, migrate it automatically to ./baileys_auth_info
+    const legacyAuthDir = path.join(__dirname, 'sesion_whatsapp_formagym');
+    if (
+      !fs.existsSync(path.join(BAILEYS_AUTH_DIR, 'creds.json')) &&
+      fs.existsSync(path.join(legacyAuthDir, 'creds.json'))
+    ) {
+      try {
+        fs.mkdirSync(BAILEYS_AUTH_DIR, { recursive: true });
+        for (const file of fs.readdirSync(legacyAuthDir)) {
+          fs.copyFileSync(path.join(legacyAuthDir, file), path.join(BAILEYS_AUTH_DIR, file));
+        }
+        addBaileysLog('Sesión existente de sesion_whatsapp_formagym importada automáticamente.');
+      } catch {
+        // ignore migration error
+      }
+    }
+
     const { state, saveCreds } = await useMultiFileAuthState(BAILEYS_AUTH_DIR);
     let version: [number, number, number] = [2, 3000, 1015901307];
     try {
@@ -1079,6 +1096,13 @@ async function startBaileysConnection(phoneForPairing?: string) {
           baileysStatusMessage =
             'Escanea el código QR desde el WhatsApp del teléfono donde correrá el bot (Dispositivos vinculados -> Vincular un dispositivo).';
           addBaileysLog('Nuevo Código QR de Baileys listo para escanear.');
+          if (process.env.AUTO_START_BAILEYS === 'true') {
+            const asciiQr = await QRCode.toString(qr, { type: 'terminal', small: true });
+            console.log('\n=============================================================');
+            console.log('📲 ESCANEA ESTE CÓDIGO QR EN WHATSAPP (O EN http://localhost:3000):');
+            console.log('=============================================================\n');
+            console.log(asciiQr);
+          }
         } catch {
           // ignore qr render error
         }
@@ -1092,6 +1116,7 @@ async function startBaileysConnection(phoneForPairing?: string) {
         baileysConnectedPhone = jidToFormattedPhone(rawUserJid);
         baileysStatusMessage = `Bot FormaGym ACTIVO y conectado en el número ${baileysConnectedPhone}`;
         addBaileysLog(`¡Conectado exitosamente a WhatsApp en ${baileysConnectedPhone}!`);
+        console.log(`\n✅ ¡BOT LOCAL DE BAILEYS CONECTADO EXITOSAMENTE EN ${baileysConnectedPhone}!\n`);
       }
 
       if (connection === 'close') {
@@ -5597,13 +5622,19 @@ async function startServer() {
   });
 
   // Endpoint to download 1-click executable scripts directly from the web UI
-  app.get('/api/download-launcher/:target', (req, res) => {
+  const handleLauncherDownload = (req: express.Request, res: express.Response) => {
     const target = req.params.target;
     let fileName = 'CLIC_AQUI_INICIAR_WINDOWS.bat';
-    if (target === 'mac') {
+    if (target === 'mac' || target === 'mac-oneclick') {
       fileName = 'CLIC_AQUI_INICIAR_MAC.command';
-    } else if (target === 'linux') {
+    } else if (target === 'linux' || target === 'linux-sh') {
       fileName = 'iniciar_local_mac_linux.sh';
+    } else if (target === 'windows-stop-pm2') {
+      fileName = 'APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat';
+    } else if (target === 'mac-stop-pm2') {
+      fileName = 'apagar_servidor_y_pm2_mac_linux.sh';
+    } else if (target === 'ecosystem-pm2') {
+      fileName = 'ecosystem.config.cjs';
     }
     const filePath = path.join(__dirname, fileName);
     if (fs.existsSync(filePath)) {
@@ -5611,7 +5642,9 @@ async function startServer() {
     } else {
       res.status(404).send('Archivo ejecutable no encontrado');
     }
-  });
+  };
+  app.get('/api/download-launcher/:target', handleLauncherDownload);
+  app.get('/api/launchers/download/:target', handleLauncherDownload);
 
   const distPath = path.join(__dirname, 'dist');
   const hasBuiltDist = fs.existsSync(path.join(distPath, 'index.html'));
@@ -5634,17 +5667,21 @@ async function startServer() {
   }
 
   const PORT = Number(process.env.PORT) || 3000;
-  // Auto-resume Baileys session if credentials already exist on disk and 24/7 mode is enabled
-  if (botRunning247 && fs.existsSync(path.join(BAILEYS_AUTH_DIR, 'creds.json'))) {
+  // Auto-activate local Baileys session when started via double-click / PM2 (AUTO_START_BAILEYS=true) or if credentials exist
+  const hasExistingCreds =
+    fs.existsSync(path.join(BAILEYS_AUTH_DIR, 'creds.json')) ||
+    fs.existsSync(path.join(__dirname, 'sesion_whatsapp_formagym', 'creds.json'));
+  if (botRunning247 && (process.env.AUTO_START_BAILEYS === 'true' || hasExistingCreds)) {
     startBaileysConnection().catch(() => {});
   }
   app.listen(PORT, '0.0.0.0', () => {
     const lanIp = getLocalNetworkIp();
     console.log(`\n=============================================================`);
-    console.log(`🏋️‍♂️ FormaGym — Sistema Web + Bot WhatsApp 24/7 Activo`);
+    console.log(`🏋️‍♂️ FormaGym — Sistema Web + Bot Local Baileys 24/7 Activo`);
     console.log(`💻 En esta computadora (Local): http://localhost:${PORT}`);
     console.log(`📱 En tu red Wi-Fi / Celular:   http://${lanIp}:${PORT}`);
     console.log(`💾 Base de datos en disco:      ${LOCAL_DB_PATH}`);
+    console.log(`🤖 Bot Local Baileys:           Activado automáticamente`);
     console.log(`=============================================================\n`);
   });
 }

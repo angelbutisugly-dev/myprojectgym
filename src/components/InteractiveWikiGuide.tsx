@@ -37,116 +37,109 @@ export interface WikiArticle {
 export const WIKI_ARTICLES: Record<string, WikiArticle> = {
   win_bat: {
     id: 'win_bat',
-    title: 'CLIC_AQUI_INICIAR_WINDOWS.bat (Ejecutable de Doble Clic para Windows)',
+    title: 'CLIC_AQUI_INICIAR_WINDOWS.bat (Ejecutable Doble Clic: Servidor + Baileys Local + PM2)',
     category: 'Ejecutables (Doble Clic)',
-    shortSummary: 'Archivo botón para Windows: le haces doble clic como a cualquier programa y enciende todo solo sin escribir comandos.',
+    shortSummary: 'Archivo botón para Windows: al darle doble clic instala librerías, activa PM2 y enciende el Servidor Web + Bot Baileys Local juntos.',
     fileLocation: '/CLIC_AQUI_INICIAR_WINDOWS.bat (en la carpeta principal del proyecto)',
     plainExplanation:
-      'Para que ninguna persona tenga que abrir la pantalla negra (Terminal/CMD) ni aprender comandos, este archivo .bat hace todo el trabajo automático cuando le das doble clic con el ratón. Entra a la carpeta correcta, revisa si ya están instaladas las piezas del programa (si es la primera vez en esa computadora, las descarga solo), abre tu navegador Chrome/Edge en http://localhost:3000 y prende el servidor y el bot de WhatsApp.',
+      'Para que no tengas que abrir dos ventanas distintas ni escribir comandos en CMD, este archivo .bat hace todo con un solo doble clic: 1) Verifica Node.js e instala node_modules (con esbuild ^0.28.0), 2) Verifica o instala el guardián PM2, 3) Activa el Servidor Web y el Bot de WhatsApp Baileys Local juntos en segundo plano usando ecosystem.config.cjs (AUTO_START_BAILEYS=true), 4) Te abre automáticamente http://localhost:3000 y te muestra el código QR y los mensajes de WhatsApp en vivo.',
     codeSnippet: `@echo off
 cd /d "%~dp0"
-where node >nul 2>nul
-if not exist "node_modules" (
-    call npm install
-)
+if not exist "node_modules\\" ( call npm install )
+where pm2 >nul 2>nul || call npm install -g pm2
+set AUTO_START_BAILEYS=true
+call pm2 start ecosystem.config.cjs --update-env
+call pm2 save
 start "" "http://localhost:3000"
-call npx tsx server.ts`,
+call pm2 logs formagym-bot-24-7 --lines 40`,
     lineByLineExplanation: [
       {
         code: 'cd /d "%~dp0"',
-        meaning: 'Le dice a Windows: "Ubícate automáticamente dentro de la carpeta donde está guardado este archivo, sin importar si está en el Escritorio, en Descargas o en un Pendrive".',
+        meaning: 'Ubica automáticamente la carpeta donde descargaste el proyecto, sin importar si está en el Escritorio o en Descargas.',
       },
       {
-        code: 'where node >nul 2>nul',
-        meaning: 'Verifica que tengas instalado el motor gratuito Node.js. Si no lo tienes, te abre sola la página nodejs.org para que lo instales.',
+        code: 'if not exist "node_modules\\" ( call npm install )',
+        meaning: 'Si es la primera vez en esa computadora, descarga todas las librerías (incluyendo esbuild ^0.28.0 compatible con Vite 8).',
       },
       {
-        code: 'if not exist "node_modules" ( call npm install )',
-        meaning: 'Revisa si es la primera vez que abres el programa en esta computadora. Si falta la carpeta node_modules, descarga todas las librerías automáticamente.',
+        code: 'where pm2 >nul 2>nul || call npm install -g pm2',
+        meaning: 'Comprueba si tienes instalado el gestor 24/7 PM2. Si no está, lo instala automáticamente.',
       },
       {
-        code: 'start "" "http://localhost:3000"',
-        meaning: 'Abre automáticamente tu navegador de internet (Chrome, Edge, Brave, etc.) directamente en el panel del gimnasio.',
+        code: 'set AUTO_START_BAILEYS=true & call pm2 start ecosystem.config.cjs --update-env',
+        meaning: 'Enciende en PM2 el servidor (server.ts) y activa el Bot Baileys Local integrado al mismo tiempo sin errores de HTML.',
       },
       {
-        code: 'call npx tsx server.ts',
-        meaning: 'Enciende el cerebro del programa (server.ts), activando la base de datos y el bot de WhatsApp 24/7.',
+        code: 'call pm2 logs formagym-bot-24-7 --lines 40',
+        meaning: 'Muestra en pantalla el código QR de WhatsApp y cada mensaje que entra en tiempo real.',
       },
     ],
     userActionRequired:
-      '¡Cero comandos! Solo haz doble clic sobre el archivo CLIC_AQUI_INICIAR_WINDOWS.bat y deja minimizada la ventanita que se abre.',
-    relatedIds: ['nodejs', 'node_modules', 'server_ts', 'localhost_3000'],
+      '¡Solo haz doble clic sobre CLIC_AQUI_INICIAR_WINDOWS.bat! Y cuando quieras apagarlo por completo, haz doble clic en APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat.',
+    relatedIds: ['pm2_manager', 'ecosystem_config', 'stop_bat', 'fix_unexpected_token', 'esbuild_028'],
   },
 
   mac_command: {
     id: 'mac_command',
-    title: 'CLIC_AQUI_INICIAR_MAC.command (Ejecutable de Doble Clic para Mac)',
+    title: 'CLIC_AQUI_INICIAR_MAC.command (Ejecutable Doble Clic para Mac con PM2 + Baileys)',
     category: 'Ejecutables (Doble Clic)',
-    shortSummary: 'Archivo ejecutable para computadoras Apple (MacBook / iMac) que arranca todo con doble clic desde Finder.',
+    shortSummary: 'Archivo ejecutable para Mac que instala todo y activa el Servidor + Bot Baileys Local con PM2 al hacer doble clic.',
     fileLocation: '/CLIC_AQUI_INICIAR_MAC.command (en la carpeta principal del proyecto)',
     plainExplanation:
-      'En las computadoras Mac, los archivos terminados en .command funcionan como un botón ejecutable desde el Finder. Cuando le haces doble clic, Mac entra a la carpeta del proyecto, instala automáticamente las herramientas si es la primera vez, abre Safari/Chrome en http://localhost:3000 y arranca el servidor.',
+      'En computadoras Mac, este archivo .command funciona con doble clic desde Finder. Instala las librerías si faltan, instala PM2, activa el servidor junto con el Bot Baileys Local (AUTO_START_BAILEYS=true) mediante ecosystem.config.cjs y abre el navegador en http://localhost:3000.',
     codeSnippet: `#!/usr/bin/env bash
 cd "$(dirname "$0")"
-if [ ! -d "node_modules" ]; then
-  npm install
-fi
+if [ ! -d "node_modules" ]; then npm install; fi
+if ! command -v pm2 >/dev/null 2>&1; then npm install -g pm2; fi
+export AUTO_START_BAILEYS=true
+pm2 start ecosystem.config.cjs --update-env
 open "http://localhost:3000"
-npx tsx server.ts`,
+pm2 logs formagym-bot-24-7`,
     lineByLineExplanation: [
       {
-        code: 'cd "$(dirname "$0")"',
-        meaning: 'Ubica automáticamente la carpeta exacta donde descargaste el proyecto en tu Mac.',
+        code: 'export AUTO_START_BAILEYS=true',
+        meaning: 'Indica al servidor que encienda automáticamente el motor local de WhatsApp Baileys apenas arranque.',
       },
       {
-        code: 'if [ ! -d "node_modules" ]; then npm install; fi',
-        meaning: 'Si es la primera vez que lo abres en esa Mac, descarga e instala todas las piezas necesarias automáticamente.',
+        code: 'pm2 start ecosystem.config.cjs --update-env',
+        meaning: 'Pone a correr el servidor y el bot en segundo plano 24/7 con auto-reinicio automático.',
       },
       {
         code: 'open "http://localhost:3000"',
-        meaning: 'Abre sola una ventana de tu navegador en la página del sistema.',
-      },
-      {
-        code: 'npx tsx server.ts',
-        meaning: 'Pone en marcha el servidor y el bot de WhatsApp.',
+        meaning: 'Abre Safari o Chrome directamente en el panel de control de FormaGym.',
       },
     ],
     userActionRequired:
-      'Haz doble clic en CLIC_AQUI_INICIAR_MAC.command. (Si tu Mac pregunta si confías en el archivo la primera vez, dale en "Abrir").',
-    relatedIds: ['linux_sh', 'nodejs', 'server_ts'],
+      'Haz doble clic en CLIC_AQUI_INICIAR_MAC.command. Para apagarlo usa apagar_servidor_y_pm2_mac_linux.sh.',
+    relatedIds: ['pm2_manager', 'ecosystem_config', 'linux_sh', 'server_ts'],
   },
 
   linux_sh: {
     id: 'linux_sh',
-    title: 'iniciar_local_mac_linux.sh (Iniciador Automático para Linux y Mac)',
+    title: 'iniciar_local_mac_linux.sh (Iniciador Automático con PM2 + Baileys para Linux/Mac)',
     category: 'Ejecutables (Doble Clic)',
-    shortSummary: 'Script universal para sistemas Linux o Mac que prepara e inicia todo el sistema automáticamente.',
+    shortSummary: 'Script universal para Linux o Mac que activa el servidor web y Baileys Local dentro de PM2.',
     fileLocation: '/iniciar_local_mac_linux.sh (en la carpeta principal del proyecto)',
     plainExplanation:
-      'Es el archivo de arranque automático para computadoras con Linux (Ubuntu, Mint, Debian) o Mac. Ya tiene permisos de ejecución activados dentro del repositorio de Git para que al descargarlo funcione de inmediato.',
+      'Es el archivo de arranque automático para Linux y Mac. Verifica node_modules, activa PM2 con ecosystem.config.cjs y mantiene encendido tanto el panel como el bot de WhatsApp Baileys.',
     codeSnippet: `#!/usr/bin/env bash
 cd "$(dirname "$0")"
-if [ ! -d "node_modules" ]; then
-  npm install
-fi
-npx tsx server.ts`,
+export AUTO_START_BAILEYS=true
+pm2 start ecosystem.config.cjs --update-env
+pm2 save`,
     lineByLineExplanation: [
       {
-        code: '#!/usr/bin/env bash',
-        meaning: 'Indica al sistema operativo que este archivo es un programa automático de arranque.',
+        code: 'export AUTO_START_BAILEYS=true',
+        meaning: 'Activa el bot local de WhatsApp integrado en server.ts sin necesidad de correr otro script manual aparte.',
       },
       {
-        code: 'cd "$(dirname "$0")"',
-        meaning: 'Se posiciona automáticamente en la carpeta del gimnasio.',
-      },
-      {
-        code: 'npx tsx server.ts',
-        meaning: 'Inicia el servidor local en el puerto 3000 y conecta el bot de WhatsApp.',
+        code: 'pm2 start ecosystem.config.cjs --update-env',
+        meaning: 'Inicia el proceso formagym-bot-24-7 administrado por PM2.',
       },
     ],
     userActionRequired:
-      'Puedes darle doble clic y elegir "Ejecutar", o usar CLIC_AQUI_INICIAR_MAC.command en Mac.',
-    relatedIds: ['mac_command', 'win_bat', 'server_ts'],
+      'Ejecútalo con doble clic o desde terminal con ./iniciar_local_mac_linux.sh.',
+    relatedIds: ['pm2_manager', 'mac_command', 'win_bat', 'server_ts'],
   },
 
   git_clone: {
@@ -611,26 +604,196 @@ http://localhost:3000/?vista=cliente`,
     title: 'Convertir tu PC en un Servidor 24/7 Permanente (o Usar Cloudflare / Hosting)',
     category: 'Red y Servidor 24/7',
     shortSummary: 'Cómo dejar la computadora del gimnasio funcionando las 24 horas sin que se suspenda, o abrir un enlace público hacia internet.',
-    fileLocation: 'Configuración de Energía de Windows/Mac + Túnel Opcional',
+    fileLocation: 'Configuración de Energía de Windows/Mac + PM2 24/7',
     plainExplanation:
-      'Para que tu computadora sea un servidor 24/7 por ti mismo solo necesitas dos cosas súper simples: (1) En la configuración de Windows o Mac, pon "Nunca" en "Suspender la pantalla/equipo cuando esté enchufado a la corriente", y (2) Deja abierto el programa que abriste con doble clic en CLIC_AQUI_INICIAR_WINDOWS.bat. El bot de WhatsApp atenderá a clientes de cualquier parte del mundo las 24 horas con solo tener internet normal en esa PC.',
+      'Para que tu computadora sea un servidor 24/7 por ti mismo solo necesitas dos cosas súper simples: (1) En la configuración de Windows o Mac, pon "Nunca" en "Suspender la pantalla/equipo cuando esté enchufado a la corriente", y (2) Haz doble clic en CLIC_AQUI_INICIAR_WINDOWS.bat. Como el ejecutable ya activa PM2 + Baileys Local automáticamente, el bot de WhatsApp atenderá a clientes las 24 horas aunque cierres la ventana negra.',
     codeSnippet: `# Para dejar tu PC como servidor 24/7 sin comandos:
 1. En Windows: Configuración -> Sistema -> Inicio/Apagado y suspensión -> "Nunca" suspender.
-2. Doble clic en CLIC_AQUI_INICIAR_WINDOWS.bat y dejar la ventana minimizada en la barra de tareas.
-3. (Opcional) Si quieres que inicie solo al prender la PC: pon un acceso directo de CLIC_AQUI_INICIAR_WINDOWS.bat en la carpeta de Inicio de Windows (shell:startup).`,
+2. Doble clic en CLIC_AQUI_INICIAR_WINDOWS.bat (activa PM2 + Baileys Local automáticamente).
+3. Para apagar el servidor cuando quieras: Doble clic en APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat.`,
     lineByLineExplanation: [
       {
         code: 'Suspensión -> "Nunca"',
         meaning: 'Evita que Windows se duerma en la noche, manteniendo el bot de WhatsApp despierto las 24 horas.',
       },
       {
-        code: 'shell:startup (Carpeta Inicio de Windows)',
-        meaning: 'Si metes un acceso directo del archivo .bat ahí, cada vez que se vaya la luz y prenda la computadora, el sistema y el bot arrancarán solos sin tocar el ratón.',
+        code: 'CLIC_AQUI_INICIAR_WINDOWS.bat',
+        meaning: 'Enciende el servidor y el bot de WhatsApp dentro del guardián PM2 para que nunca se apague por error.',
       },
     ],
     userActionRequired:
-      'Desactiva el modo suspensión de tu PC y deja corriendo el ejecutable de doble clic.',
-    relatedIds: ['win_bat', 'localhost_3000', 'lan_wifi'],
+      'Desactiva el modo suspensión de tu PC y ejecuta CLIC_AQUI_INICIAR_WINDOWS.bat.',
+    relatedIds: ['pm2_manager', 'ecosystem_config', 'stop_bat', 'win_bat'],
+  },
+
+  pm2_manager: {
+    id: 'pm2_manager',
+    title: 'PM2 (Qué es, Cómo Funciona, Cómo Configurarlo y Cómo Apagarlo)',
+    category: 'Red y Servidor 24/7',
+    shortSummary: 'El guardián automático en segundo plano que mantiene vivo el Servidor Web + Bot Baileys Local 24/7 y los reinicia si algo falla.',
+    fileLocation: 'Instalado automáticamente por el Doble Clic y configurado en /ecosystem.config.cjs',
+    plainExplanation:
+      'PM2 (Process Manager 2) es un programa guardián que corre escondido en el fondo de tu computadora. ¿Qué hace? Vigila a FormaGym y al Bot de WhatsApp las 24 horas del día. ¿Cómo lo hace? Cuando haces doble clic en CLIC_AQUI_INICIAR_WINDOWS.bat, PM2 lee el archivo ecosystem.config.cjs y crea un servicio en segundo plano llamado "formagym-bot-24-7" con la variable AUTO_START_BAILEYS=true. Si por algún bajón de internet o pico de memoria el servidor se cierra, PM2 lo detecta en menos de 3 segundos y lo vuelve a encender automáticamente sin perder tu sesión de WhatsApp.',
+    codeSnippet: `# 1. CÓMO ENCENDERLO (Automático con Doble Clic en CLIC_AQUI_INICIAR_WINDOWS.bat o por comando):
+npm run pm2:start
+# (Equivale a: pm2 start ecosystem.config.cjs --update-env && pm2 save)
+
+# 2. CÓMO VER EL ESTADO Y LOS MENSAJES / QR EN VIVO:
+pm2 status
+npm run pm2:logs
+
+# 3. CÓMO APAGARLO (Con Doble Clic en APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat o por comando):
+npm run pm2:stop     # Pausa el servidor y el bot
+npm run pm2:delete   # Lo quita por completo de PM2
+pm2 kill             # Apaga todo el motor PM2`,
+    lineByLineExplanation: [
+      {
+        code: 'pm2 start ecosystem.config.cjs --update-env',
+        meaning: 'Lee la receta de ecosystem.config.cjs y arranca server.ts junto con Baileys Local (AUTO_START_BAILEYS=true) en segundo plano.',
+      },
+      {
+        code: 'pm2 status',
+        meaning: 'Muestra una tablita indicando que "formagym-bot-24-7" está "online" (encendido), cuánta memoria usa y cuánto tiempo lleva activo.',
+      },
+      {
+        code: 'pm2 logs formagym-bot-24-7 (o npm run pm2:logs)',
+        meaning: 'Muestra en vivo el código QR de WhatsApp y cada mensaje que entra o responde el bot.',
+      },
+      {
+        code: 'pm2 stop formagym-bot-24-7 / APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat',
+        meaning: 'Apaga inmediatamente el servidor y desconecta el bot de WhatsApp cuando quieras detener el sistema.',
+      },
+    ],
+    userActionRequired:
+      'Para encenderlo: Doble clic en CLIC_AQUI_INICIAR_WINDOWS.bat. Para apagarlo: Doble clic en APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat.',
+    relatedIds: ['ecosystem_config', 'stop_bat', 'win_bat', 'fix_unexpected_token'],
+  },
+
+  ecosystem_config: {
+    id: 'ecosystem_config',
+    title: 'ecosystem.config.cjs (Archivo que Une el Servidor + Baileys Local en PM2)',
+    category: 'Ejecutables (Doble Clic)',
+    shortSummary: 'El archivo de configuración que le ordena a PM2 encender tanto el servidor web como el Bot Baileys Local al mismo tiempo.',
+    fileLocation: '/ecosystem.config.cjs (en la carpeta principal del proyecto)',
+    plainExplanation:
+      'Antes tenías que encender el servidor por un lado y el bot manual de Baileys por otro. Ahora ecosystem.config.cjs une ambos en un solo proceso: le ordena a PM2 arrancar server.ts con AUTO_START_BAILEYS: "true". Así, apenas prende el servidor en el puerto 3000, el motor local de Baileys se activa adentro del mismo servidor sin chocar ni dar errores de HTML.',
+    codeSnippet: `module.exports = {
+  apps: [{
+    name: 'formagym-bot-24-7',
+    script: './node_modules/tsx/dist/cli.mjs',
+    args: 'server.ts',
+    autorestart: true,
+    max_memory_restart: '750M',
+    env: {
+      NODE_ENV: 'development',
+      PORT: 3000,
+      AUTO_START_BAILEYS: 'true'
+    }
+  }]
+};`,
+    lineByLineExplanation: [
+      {
+        code: "name: 'formagym-bot-24-7'",
+        meaning: 'Es el nombre del proceso dentro de PM2 para controlarlo fácilmente.',
+      },
+      {
+        code: "AUTO_START_BAILEYS: 'true'",
+        meaning: 'Activa el Bot Baileys Local automáticamente al iniciar el servidor, migrando tu sesión previa si ya habías escaneado el QR.',
+      },
+      {
+        code: 'autorestart: true',
+        meaning: 'Le ordena a PM2 revivir el servidor y el bot automáticamente si algún día se cierra.',
+      },
+    ],
+    userActionRequired:
+      'No necesitas editarlo; CLIC_AQUI_INICIAR_WINDOWS.bat lo ejecuta automáticamente.',
+    relatedIds: ['pm2_manager', 'win_bat', 'server_ts'],
+  },
+
+  stop_bat: {
+    id: 'stop_bat',
+    title: 'APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat (Apagar PM2 y el Bot con Doble Clic)',
+    category: 'Ejecutables (Doble Clic)',
+    shortSummary: 'Ejecutable de doble clic para apagar por completo el servidor y el bot que están corriendo en segundo plano en PM2.',
+    fileLocation: '/APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat (y /apagar_servidor_y_pm2_mac_linux.sh en Mac/Linux)',
+    plainExplanation:
+      'Como PM2 está diseñado para mantener el servidor y el bot encendidos 24/7 aunque cierres la ventana negra, cuando quieras apagar el sistema de verdad solo tienes que hacer doble clic en APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat. Él le ordena a PM2 detener y borrar el proceso activo.',
+    codeSnippet: `@echo off
+cd /d "%~dp0"
+call pm2 stop formagym-bot-24-7
+call pm2 delete formagym-bot-24-7
+call pm2 save --force`,
+    lineByLineExplanation: [
+      {
+        code: 'call pm2 stop formagym-bot-24-7',
+        meaning: 'Frena inmediatamente el servidor en el puerto 3000 y detiene el bot de WhatsApp.',
+      },
+      {
+        code: 'call pm2 delete formagym-bot-24-7',
+        meaning: 'Quita el proceso de la memoria de PM2 para que quede 100% apagado hasta que vuelvas a hacer doble clic en iniciar.',
+      },
+    ],
+    userActionRequired:
+      'Haz doble clic en APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat cada vez que quieras apagar el servidor.',
+    relatedIds: ['pm2_manager', 'win_bat', 'ecosystem_config'],
+  },
+
+  fix_unexpected_token: {
+    id: 'fix_unexpected_token',
+    title: 'Solución al Error: Unexpected token \'<\', "<!doctype "... is not valid JSON',
+    category: 'Cerebro del Bot y Código',
+    shortSummary: 'Por qué fallaba el bot manual al recibir mensajes como "+112974886883436: Ola" y cómo quedó solucionado definitivamente.',
+    fileLocation: '/server.ts y /bot_baileys_formagym.cjs',
+    plainExplanation:
+      'Ese error ocurría por dos causas en el script manual antiguo: 1) El bot intentaba enviar el mensaje por internet a la dirección privada de vista previa (https://ais-dev...), la cual pide inicio de sesión de Google y responde con una página web HTML ("<!doctype html>") en vez de datos JSON. Al intentar leer ese HTML como JSON, salía "Unexpected token <". 2) WhatsApp ahora envía identificadores internos llamados @lid (como +112974886883436@lid). Ahora: el ejecutable de doble clic activa Baileys ADENTRO de server.ts (en memoria directa sin llamadas externas HTML), extrae el número telefónico real desde senderPn/participantAlt, y además bot_baileys_formagym.cjs apunta a http://localhost:3000 verificando que la respuesta sea JSON.',
+    codeSnippet: `// 1. Extracción del teléfono real cuando WhatsApp envía @lid (+112974886883436):
+const senderPn = msg.key?.senderPn || msg.key?.participantAlt || msg.key?.remoteJid;
+
+// 2. Procesamiento directo en server.ts (CERO errores de <!doctype html>):
+const result = await processIncomingWhatsAppMessage(phone, text, pushName);`,
+    lineByLineExplanation: [
+      {
+        code: 'msg.key?.senderPn || msg.key?.participantAlt',
+        meaning: 'Obtiene el verdadero número de teléfono del cliente aunque WhatsApp envíe un código @lid como +112974886883436.',
+      },
+      {
+        code: 'processIncomingWhatsAppMessage(phone, text, pushName)',
+        meaning: 'Procesa el mensaje directamente dentro del servidor local en tu PC, sin pasar por páginas HTML externas.',
+      },
+    ],
+    userActionRequired:
+      'Ya está 100% corregido. Solo inicia con doble clic en CLIC_AQUI_INICIAR_WINDOWS.bat.',
+    relatedIds: ['win_bat', 'pm2_manager', 'server_ts', 'baileys_lib'],
+  },
+
+  esbuild_028: {
+    id: 'esbuild_028',
+    title: 'esbuild ^0.28.0 en package.json (Cambio de 0.25.0 a 0.28.0)',
+    category: 'Ejecutables (Doble Clic)',
+    shortSummary: 'Por qué esbuild fue actualizado de ^0.25.0 a ^0.28.0 en package.json para que todo instale y arranque sin errores.',
+    fileLocation: '/package.json (línea 46)',
+    plainExplanation:
+      'El sistema utiliza Vite 8 (^8.3.0), el cual exige obligatoriamente que esbuild sea versión ^0.28.0. Cuando estaba en ^0.25.0, npm install chocaba con un error de conflicto de versiones (ERESOLVE). Ahora package.json ya tiene fijo "esbuild": "^0.28.0" para que al hacer doble clic en cualquier computadora se instale limpio a la primera.',
+    codeSnippet: `"devDependencies": {
+  "@types/better-sqlite3": "^7.6.13",
+  "@types/express": "^5.0.6",
+  "@types/node": "^22.14.0",
+  "@types/qrcode": "^1.5.6",
+  "autoprefixer": "^10.4.27",
+  "esbuild": "^0.28.0",
+  "tsx": "^4.21.0",
+  "typescript": "~6.0.2",
+  "vite": "^8.3.0"
+}`,
+    lineByLineExplanation: [
+      {
+        code: '"esbuild": "^0.28.0"',
+        meaning: 'Versión exacta compatible con Vite 8 y tsx para que npm install y el servidor funcionen sin errores.',
+      },
+    ],
+    userActionRequired:
+      'Ya está aplicado en package.json. Si ya tenías una carpeta vieja, al hacer doble clic en CLIC_AQUI_INICIAR_WINDOWS.bat funcionará de inmediato.',
+    relatedIds: ['node_modules', 'win_bat', 'pm2_manager'],
   },
 };
 
@@ -711,7 +874,7 @@ export const InteractiveWikiGuide: React.FC<InteractiveWikiGuideProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-600 text-white text-[11px] font-bold uppercase tracking-wider">
               <BookOpen className="w-3.5 h-3.5" />
-              Wiki Interactiva de FormaGym (Sin Comandos de Terminal)
+              Wiki Interactiva de FormaGym (Doble Clic + PM2 + Baileys Local)
             </span>
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-900 text-[11px] font-bold">
               <MousePointerClick className="w-3.5 h-3.5 text-emerald-700" />
@@ -719,12 +882,14 @@ export const InteractiveWikiGuide: React.FC<InteractiveWikiGuideProps> = ({
             </span>
           </div>
           <h2 className="text-xl font-bold text-slate-900">
-            Enciclopedia Visual del Sistema: Ejecutables de 1 Clic y Explicación del Código para Principiantes
+            Enciclopedia Visual del Sistema: Ejecutables de Doble Clic (Servidor + Baileys + PM2) y Explicación del Código
           </h2>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Esta guía está diseñada como una <strong>Wikipedia interactiva</strong> para personas que{' '}
-            <strong>no saben absolutamente nada de comandos ni de programación</strong>. Haz clic en cualquier{' '}
-            <WikiLink id="win_bat">texto azul como este</WikiLink> y se abrirá una tarjeta explicándote qué hace esa parte del código en palabras simples.
+            Esta guía funciona como una <strong>Wikipedia interactiva</strong>. Haz clic en cualquier enlace azul como{' '}
+            <WikiLink id="win_bat">CLIC_AQUI_INICIAR_WINDOWS.bat</WikiLink>,{' '}
+            <WikiLink id="pm2_manager">PM2 24/7</WikiLink>,{' '}
+            <WikiLink id="fix_unexpected_token">Solución Error Unexpected token &apos;&lt;&apos;</WikiLink> o{' '}
+            <WikiLink id="esbuild_028">esbuild ^0.28.0</WikiLink> para ver exactamente qué hace y cómo funciona por dentro.
           </p>
         </div>
 
@@ -732,7 +897,7 @@ export const InteractiveWikiGuide: React.FC<InteractiveWikiGuideProps> = ({
         <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
           <div className="w-full text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
             <Play className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Descargar Ejecutables de Doble Clic (Ya incluidos también en la carpeta):</span>
+            <span>Descargar Ejecutables de Doble Clic (Ya incluidos también en la carpeta del proyecto):</span>
           </div>
           <a
             href="/api/launchers/download/windows-oneclick"
@@ -740,7 +905,15 @@ export const InteractiveWikiGuide: React.FC<InteractiveWikiGuideProps> = ({
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Windows: CLIC_AQUI_INICIAR_WINDOWS.bat</span>
+            <span>Windows (Iniciar Todo + PM2): CLIC_AQUI_INICIAR_WINDOWS.bat</span>
+          </a>
+          <a
+            href="/api/launchers/download/windows-stop"
+            download="APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat"
+            className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Windows (Apagar PM2): APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat</span>
           </a>
           <a
             href="/api/launchers/download/mac-oneclick"
@@ -773,7 +946,7 @@ export const InteractiveWikiGuide: React.FC<InteractiveWikiGuideProps> = ({
           }`}
         >
           <MousePointerClick className="w-3.5 h-3.5" />
-          <span>1. Iniciar con Doble Clic (Cero Comandos)</span>
+          <span>1. Doble Clic + Explicación Completa de PM2</span>
         </button>
 
         <button
@@ -837,14 +1010,14 @@ export const InteractiveWikiGuide: React.FC<InteractiveWikiGuideProps> = ({
             <div className="space-y-4">
               <div className="p-5 rounded-xl bg-blue-50/50 border border-blue-200 space-y-3">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800">
-                  Capítulo 1 — Guía para Personas sin Conocimiento de Terminal
+                  Capítulo 1 — Doble Clic Automático (Servidor Web + Baileys Local + PM2)
                 </span>
                 <h3 className="text-base font-bold text-slate-900">
-                  Cómo Descargar y Prender Todo en Cualquier Computadora dando Solo Doble Clic
+                  Cómo Encender y Apagar Todo el Sistema y el Bot con Doble Clic (y Guía Completa de PM2)
                 </h3>
                 <p className="text-xs text-slate-700 leading-relaxed">
-                  En la carpeta principal del proyecto ya vienen listos los archivos ejecutables para que{' '}
-                  <strong>nunca tengas que escribir comandos en una pantalla negra</strong>. Si pasas este proyecto a otra computadora, solo sigue estos 3 pasos:
+                  Ahora no necesitas abrir el servidor por un lado y el bot manual de Baileys por otro. Con un solo doble clic se enciende el <strong>Servidor Web + el Bot Baileys Local + el guardián PM2</strong> todo integrado y con{' '}
+                  <WikiLink id="esbuild_028">esbuild ^0.28.0</WikiLink> ya configurado:
                 </p>
 
                 <div className="space-y-3 pt-1">
@@ -854,63 +1027,63 @@ export const InteractiveWikiGuide: React.FC<InteractiveWikiGuideProps> = ({
                       <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] flex items-center justify-center font-bold">
                         1
                       </span>
-                      <span>Instala el motor gratuito (Solo la primera vez en esa PC)</span>
+                      <span>Encender Todo con Doble Clic (Servidor + Bot Baileys + PM2)</span>
                     </div>
                     <p className="text-xs text-slate-600 leading-relaxed pl-7">
-                      Entra en{' '}
-                      <a
-                        href="https://nodejs.org"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-bold text-emerald-700 underline"
-                      >
-                        nodejs.org
-                      </a>{' '}
-                      y descarga el botón verde que dice <strong>LTS</strong>. Esto instala{' '}
-                      <WikiLink id="nodejs">Node.js</WikiLink> en tu computadora igual que cualquier programa normal (Siguiente → Siguiente → Finalizar).
+                      En Windows, haz doble clic en{' '}
+                      <WikiLink id="win_bat">CLIC_AQUI_INICIAR_WINDOWS.bat</WikiLink> (en Mac usa{' '}
+                      <WikiLink id="mac_command">CLIC_AQUI_INICIAR_MAC.command</WikiLink>). Él instalará automáticamente las librerías si es la primera vez, instalará <WikiLink id="pm2_manager">PM2</WikiLink>, activará el servidor junto con el Bot Baileys Local usando{' '}
+                      <WikiLink id="ecosystem_config">ecosystem.config.cjs</WikiLink>, abrirá{' '}
+                      <WikiLink id="localhost_3000">http://localhost:3000</WikiLink> y mostrará el QR o los mensajes en vivo.
                     </p>
                   </div>
 
-                  {/* Step 2 */}
-                  <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-1.5">
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] flex items-center justify-center font-bold">
+                  {/* Step 2: PM2 Guide */}
+                  <div className="p-4 rounded-xl bg-indigo-50/70 border-2 border-indigo-200 space-y-2">
+                    <div className="text-xs font-bold text-indigo-950 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] flex items-center justify-center font-bold">
                         2
                       </span>
-                      <span>Descarga la carpeta del proyecto en el Escritorio</span>
+                      <span>¿Qué es PM2, qué hace, cómo lo hace y cómo se controla?</span>
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed pl-7">
-                      Baja el proyecto usando <WikiLink id="git_clone">Descargar ZIP o git clone</WikiLink> y descomprime la carpeta en tu Escritorio o Documentos. Adentro verás todos los archivos del gimnasio junto con los botones ejecutables.
-                    </p>
+                    <div className="text-xs text-slate-700 leading-relaxed pl-7 space-y-1.5">
+                      <p>
+                        • <strong>¿Qué hace <WikiLink id="pm2_manager">PM2</WikiLink>?</strong> Es un administrador de procesos 24/7 que mantiene encendido el servidor y el bot de WhatsApp en segundo plano aunque cierres la ventana negra. Si ocurre un error o se cae la red, lo reinicia solo en 3 segundos.
+                      </p>
+                      <p>
+                        • <strong>¿Cómo lo hace?</strong> Lee el archivo{' '}
+                        <WikiLink id="ecosystem_config">ecosystem.config.cjs</WikiLink>, el cual arranca{' '}
+                        <WikiLink id="server_ts">server.ts</WikiLink> con la orden <code className="font-mono bg-white px-1 rounded">AUTO_START_BAILEYS=true</code> bajo el nombre <code className="font-mono bg-white px-1 rounded">formagym-bot-24-7</code>.
+                      </p>
+                      <p>
+                        • <strong>¿Cómo se configura / inicia?</strong> Automáticamente dando doble clic en{' '}
+                        <WikiLink id="win_bat">CLIC_AQUI_INICIAR_WINDOWS.bat</WikiLink>, o si prefieres por comando escribiendo: <code className="font-mono bg-slate-900 text-emerald-300 px-1.5 py-0.5 rounded">npm run pm2:start</code>.
+                      </p>
+                      <p>
+                        • <strong>¿Cómo se apaga PM2?</strong> Haciendo doble clic en{' '}
+                        <WikiLink id="stop_bat">APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat</WikiLink>, o escribiendo en terminal: <code className="font-mono bg-slate-900 text-rose-300 px-1.5 py-0.5 rounded">npm run pm2:stop</code> (o <code className="font-mono bg-slate-900 text-rose-300 px-1.5 py-0.5 rounded">pm2 kill</code>).
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Step 3 */}
+                  {/* Step 3: Fix Explanation */}
                   <div className="p-4 rounded-xl bg-emerald-50/70 border-2 border-emerald-300 space-y-1.5">
                     <div className="text-xs font-bold text-emerald-950 flex items-center gap-2">
                       <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-[11px] flex items-center justify-center font-bold">
                         3
                       </span>
-                      <span>¡Haz Doble Clic en el Ejecutable de tu Sistema!</span>
+                      <span>Solución definitiva al error &ldquo;Unexpected token &apos;&lt;&apos;, &lt;!doctype...&rdquo; y esbuild 0.28.0</span>
                     </div>
                     <div className="text-xs text-slate-700 leading-relaxed pl-7 space-y-1.5">
                       <p>
-                        • <strong>Si estás en Windows:</strong> Haz doble clic sobre{' '}
-                        <WikiLink id="win_bat">CLIC_AQUI_INICIAR_WINDOWS.bat</WikiLink> (o en{' '}
-                        <code className="font-mono bg-white px-1 rounded">INICIAR_LOCAL_WINDOWS.bat</code>).
+                        • Haz clic en{' '}
+                        <WikiLink id="fix_unexpected_token">
+                          Solución al Error Unexpected token &apos;&lt;&apos;
+                        </WikiLink>{' '}
+                        para ver cómo ahora el bot procesa los mensajes de WhatsApp (incluyendo IDs <code className="font-mono bg-white px-1 rounded">@lid</code> como <code className="font-mono bg-white px-1 rounded">+112974886883436</code>) directamente en tu servidor local sin chocar con páginas HTML.
                       </p>
                       <p>
-                        • <strong>Si estás en una Mac (Apple):</strong> Haz doble clic sobre{' '}
-                        <WikiLink id="mac_command">CLIC_AQUI_INICIAR_MAC.command</WikiLink>.
-                      </p>
-                      <p>
-                        • <strong>Si estás en Linux:</strong> Abre o ejecuta{' '}
-                        <WikiLink id="linux_sh">iniciar_local_mac_linux.sh</WikiLink>.
-                      </p>
-                      <p className="text-[11px] text-emerald-900 font-semibold pt-1">
-                        ✨ ¿Qué pasa al hacer doble clic? El ejecutable descarga solo la carpeta{' '}
-                        <WikiLink id="node_modules">node_modules</WikiLink> (si es la primera vez), enciende el cerebro{' '}
-                        <WikiLink id="server_ts">server.ts</WikiLink> y te abre automáticamente el navegador en{' '}
-                        <WikiLink id="localhost_3000">http://localhost:3000</WikiLink>.
+                        • Haz clic en <WikiLink id="esbuild_028">esbuild ^0.28.0</WikiLink> para ver el ajuste en <code className="font-mono bg-white px-1 rounded">package.json</code> que garantiza que <code className="font-mono bg-white px-1 rounded">npm install</code> funcione siempre sin errores.
                       </p>
                     </div>
                   </div>

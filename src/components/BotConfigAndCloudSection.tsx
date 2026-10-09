@@ -145,41 +145,101 @@ export const BotConfigAndCloudSection: React.FC<BotConfigAndCloudSectionProps> =
     }, 2200);
   };
 
+  const [settingsViewTab, setSettingsViewTab] = useState<'pm2_bot' | 'config_form' | 'wiki_db'>(
+    'pm2_bot'
+  );
+
   const handleDownloadWindowsLauncher = () => {
     const batContent = `@echo off
-title FormaGym - Servidor Local y Bot de WhatsApp 24/7
-echo ================================================================
-echo   FORMAGYM - SISTEMA WEB + BOT DE WHATSAPP (MODO LOCAL)
-echo ================================================================
+chcp 65001 >nul 2>nul
+cd /d "%~dp0"
+title FormaGym - Ejecutable Todo-en-Uno (Servidor + Baileys Local + PM2 24/7)
+
+echo ====================================================================
+echo   🏋️‍♂️ FORMAGYM - EJECUTABLE INTEGRADO (WEB + BAILEYS LOCAL + PM2)
+echo ====================================================================
 echo.
 
 where node >nul 2>nul
 if %errorlevel% neq 0 (
     echo [ERROR] Node.js no esta instalado en esta computadora.
-    echo Por favor descarga e instala Node.js LTS desde: https://nodejs.org
+    echo Descargalo gratis desde: https://nodejs.org (Boton verde LTS)
+    start "" "https://nodejs.org"
     pause
     exit /b 1
 )
 
-if not exist "node_modules" (
-    echo [1/2] Instalando dependencias por primera vez (esto toma 1 minuto)...
+if not exist "node_modules\\" (
+    echo [1/4] Instalando librerias por primera vez...
     call npm install
+) else (
+    echo [1/4] Librerias listas.
 )
 
-echo.
-echo [2/2] Iniciando servidor de FormaGym en http://localhost:3000 ...
-echo       Puedes abrir http://localhost:3000 en tu navegador.
-echo       No cierres esta ventana mientras quieras que el bot siga activo.
-echo.
-start "" "http://localhost:3000"
-call npm run dev
+echo [2/4] Verificando motor 24/7 PM2...
+where pm2 >nul 2>nul
+if %errorlevel% neq 0 (
+    echo       Instalando PM2 automaticamente...
+    call npm install -g pm2
+)
+
+if not exist "ecosystem.config.cjs" (
+    (
+        echo module.exports = {
+        echo   apps: [{
+        echo     name: 'formagym-bot-24-7',
+        echo     script: './node_modules/tsx/dist/cli.mjs',
+        echo     args: 'server.ts',
+        echo     autorestart: true,
+        echo     max_memory_restart: '750M',
+        echo     env: { NODE_ENV: 'development', PORT: 3000, AUTO_START_BAILEYS: 'true' }
+        echo   }]
+        echo };
+    ) > ecosystem.config.cjs
+)
+
+echo [3/4] Activando Servidor + Bot Local Baileys dentro de PM2...
+set AUTO_START_BAILEYS=true
+call pm2 delete formagym-bot-24-7 >nul 2>nul
+call pm2 start ecosystem.config.cjs --update-env
+call pm2 save >nul 2>nul
+
+echo [4/4] Abriendo http://localhost:3000 ...
+start "" cmd /c "timeout /t 3 /nobreak >nul & start http://localhost:3000"
+call pm2 logs formagym-bot-24-7 --lines 35
 pause
 `;
     const blob = new Blob([batContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'INICIAR_LOCAL_WINDOWS.bat';
+    a.download = 'CLIC_AQUI_INICIAR_WINDOWS.bat';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadWindowsStopLauncher = () => {
+    const stopBatContent = `@echo off
+chcp 65001 >nul 2>nul
+cd /d "%~dp0"
+title FormaGym - Apagar Servidor y Bot PM2
+echo ====================================================================
+echo   🛑 APAGANDO SERVIDOR FORMAGYM Y BOT BAILEYS EN PM2
+echo ====================================================================
+call pm2 stop formagym-bot-24-7
+call pm2 delete formagym-bot-24-7
+call pm2 save --force >nul 2>nul
+echo.
+echo [OK] El servidor y el bot de WhatsApp se han apagado por completo.
+pause
+`;
+    const blob = new Blob([stopBatContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -188,26 +248,47 @@ pause
 
   const handleDownloadUnixLauncher = () => {
     const shContent = `#!/usr/bin/env bash
-set -e
+cd "$(dirname "$0")"
+export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
 echo "================================================================"
-echo "  FORMAGYM - SISTEMA WEB + BOT DE WHATSAPP (MODO LOCAL)"
+echo "  FORMAGYM - EJECUTABLE INTEGRADO (WEB + BAILEYS LOCAL + PM2)"
 echo "================================================================"
 if ! command -v node >/dev/null 2>&1; then
   echo "[ERROR] Node.js no está instalado. Instálalo desde https://nodejs.org"
   exit 1
 fi
 if [ ! -d "node_modules" ]; then
-  echo "[1/2] Instalando dependencias por primera vez..."
   npm install
 fi
-echo "[2/2] Iniciando servidor de FormaGym en http://localhost:3000 ..."
-npm run dev
+if ! command -v pm2 >/dev/null 2>&1; then
+  npm install -g pm2 || true
+fi
+if [ ! -f "ecosystem.config.cjs" ]; then
+  cat << 'EOF' > ecosystem.config.cjs
+module.exports = {
+  apps: [{
+    name: 'formagym-bot-24-7',
+    script: './node_modules/tsx/dist/cli.mjs',
+    args: 'server.ts',
+    autorestart: true,
+    max_memory_restart: '750M',
+    env: { NODE_ENV: 'development', PORT: 3000, AUTO_START_BAILEYS: 'true' }
+  }]
+};
+EOF
+fi
+export AUTO_START_BAILEYS=true
+pm2 delete formagym-bot-24-7 >/dev/null 2>&1 || true
+pm2 start ecosystem.config.cjs --update-env
+pm2 save >/dev/null 2>&1 || true
+(sleep 3 && open "http://localhost:3000" 2>/dev/null || true) &
+pm2 logs formagym-bot-24-7 --lines 35
 `;
     const blob = new Blob([shContent], { type: 'text/x-sh;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'iniciar_local_mac_linux.sh';
+    a.download = 'CLIC_AQUI_INICIAR_MAC.command';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -635,20 +716,16 @@ CMD ["npx", "tsx", "server.ts"]
     }
   };
 
-  // Generate standalone Baileys script pre-configured with the user's current settings & panel URL
+  // Generate standalone Baileys script pre-configured with localhost:3000 + @lid resolution + safe JSON parsing
   const buildBaileysStandaloneScript = () => {
-    const panelApiUrl = `${window.location.origin}/api/whatsapp/chat`;
+    const localApiUrl = 'http://localhost:3000/api/whatsapp/chat';
     return `// ============================================================================
 // FORMAGYM — BOT DE WHATSAPP OFICIAL CON BAILEYS (@whiskeysockets/baileys)
-// Conecta cualquier número de WhatsApp escaneando el código QR y sincroniza
-// todos los pagos, precios y membresías con tu panel de FormaGym.
-// ============================================================================
-// PASO 1: Instala Node.js desde https://nodejs.org (botón verde LTS)
-// PASO 2: Abre la terminal (CMD) en esta carpeta y ejecuta (una sola vez):
-//         npm init -y
-//         npm install @whiskeysockets/baileys qrcode-terminal pino
-// PASO 3: Inicia tu bot ejecutando:
-//         node bot_baileys_formagym.js
+// NOTA: Al hacer doble clic en CLIC_AQUI_INICIAR_WINDOWS.bat, el servidor ya
+// inicia este bot automáticamente dentro de PM2 (sin necesidad de correr esto aparte).
+// Si deseas correr este archivo manualmente, se conecta directo a tu servidor
+// local en http://localhost:3000/api/whatsapp/chat (sin errores de HTML/JSON)
+// y resuelve identificadores @lid de WhatsApp automáticamente.
 // ============================================================================
 
 const {
@@ -661,18 +738,42 @@ const {
 const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 
-const PANEL_API_URL = ${JSON.stringify(panelApiUrl)};
+const LOCAL_API_URL = process.env.FORMAGYM_API_URL || ${JSON.stringify(localApiUrl)};
+const mapaTelefonoAJid = new Map();
 
 function formatearTelefono(jid) {
   const digitos = (jid || '').split('@')[0].split(':')[0].replace(/\\D/g, '');
   if (digitos.startsWith('58') && digitos.length === 12) {
     return '+58 ' + digitos.slice(2, 5) + '-' + digitos.slice(5);
   }
-  return '+' + digitos;
+  return digitos ? '+' + digitos : '+58 412-0000000';
+}
+
+function extraerTelefonoReal(msg) {
+  const key = msg.key || {};
+  const remoteJid = key.remoteJid || '';
+  const senderPn = key.senderPn || key.remoteJidAlt || key.participantAlt || '';
+  const participant = key.participant || '';
+  // Priorizar JID con @s.whatsapp.net para obtener el número real y no el ID @lid
+  const candidato =
+    [senderPn, remoteJid, participant].find((j) => j && j.endsWith('@s.whatsapp.net')) ||
+    senderPn ||
+    participant ||
+    remoteJid;
+  const telefono = formatearTelefono(candidato);
+  const clave = telefono.replace(/\\D/g, '').slice(-10);
+  if (clave && remoteJid) {
+    mapaTelefonoAJid.set(clave, remoteJid);
+  }
+  return { telefonoCliente: telefono, replyJid: remoteJid };
 }
 
 function telefonoAJid(telefono) {
   let digitos = (telefono || '').replace(/\\D/g, '');
+  const clave = digitos.slice(-10);
+  if (clave && mapaTelefonoAJid.has(clave)) {
+    return mapaTelefonoAJid.get(clave);
+  }
   if (digitos.startsWith('04') && digitos.length === 11) {
     digitos = '58' + digitos.slice(1);
   }
@@ -680,7 +781,7 @@ function telefonoAJid(telefono) {
 }
 
 async function iniciarBotFormaGym() {
-  const { state, saveCreds } = await useMultiFileAuthState('./sesion_whatsapp_formagym');
+  const { state, saveCreds } = await useMultiFileAuthState('./baileys_auth_info');
   const { version } = await fetchLatestBaileysVersion();
 
   const sock = makeWASocket({
@@ -705,6 +806,7 @@ async function iniciarBotFormaGym() {
 
     if (connection === 'open') {
       console.log('\\n✅ ¡BOT FORMAGYM CONECTADO EXITOSAMENTE A WHATSAPP!');
+      console.log('🔗 Conectado al servidor local en: ' + LOCAL_API_URL);
       console.log('🤖 Escuchando mensajes de clientes en tiempo real...\\n');
     }
 
@@ -714,7 +816,7 @@ async function iniciarBotFormaGym() {
         console.log('🔄 Reconectando con WhatsApp...');
         setTimeout(iniciarBotFormaGym, 3000);
       } else {
-        console.log('❌ Sesión cerrada desde el teléfono. Borra la carpeta sesion_whatsapp_formagym para volver a escanear.');
+        console.log('❌ Sesión cerrada desde el teléfono. Borra la carpeta baileys_auth_info para volver a escanear.');
       }
     }
   });
@@ -727,19 +829,27 @@ async function iniciarBotFormaGym() {
       const remoteJid = msg.key.remoteJid || '';
       if (remoteJid === 'status@broadcast' || remoteJid.endsWith('@g.us')) continue;
 
-      const telefonoCliente = formatearTelefono(msg.key.participant || remoteJid);
+      const { telefonoCliente, replyJid } = extraerTelefonoReal(msg);
+      const rawInner =
+        msg.message?.ephemeralMessage?.message ||
+        msg.message?.viewOnceMessage?.message ||
+        msg.message?.viewOnceMessageV2?.message ||
+        msg.message;
+      const imageMsgObj = rawInner?.imageMessage || msg.message?.imageMessage;
+      const extTextObj = rawInner?.extendedTextMessage || msg.message?.extendedTextMessage;
       const texto =
-        msg.message.conversation ||
-        msg.message.extendedTextMessage?.text ||
-        msg.message.imageMessage?.caption ||
+        rawInner?.conversation ||
+        msg.message?.conversation ||
+        extTextObj?.text ||
+        imageMsgObj?.caption ||
         '';
-      const quotedMsg = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+      const quotedMsg = extTextObj?.contextInfo?.quotedMessage || imageMsgObj?.contextInfo?.quotedMessage;
       const textoCitado =
         quotedMsg?.conversation ||
         quotedMsg?.extendedTextMessage?.text ||
         quotedMsg?.imageMessage?.caption ||
         '';
-      const tieneFoto = Boolean(msg.message.imageMessage);
+      const tieneFoto = Boolean(imageMsgObj);
 
       if (!texto.trim() && !tieneFoto) continue;
 
@@ -751,14 +861,14 @@ async function iniciarBotFormaGym() {
         if (tieneFoto) {
           try {
             bufferFoto = await downloadMediaMessage(msg, 'buffer', {});
-            const mime = msg.message.imageMessage?.mimetype || 'image/jpeg';
+            const mime = imageMsgObj?.mimetype || 'image/jpeg';
             receiptImageUrl = 'data:' + mime + ';base64,' + bufferFoto.toString('base64');
           } catch (e) {
             console.error('No se pudo descargar la imagen:', e.message);
           }
         }
 
-        const res = await fetch(PANEL_API_URL, {
+        const res = await fetch(LOCAL_API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -770,21 +880,28 @@ async function iniciarBotFormaGym() {
           }),
         });
 
-        const datos = await res.json();
-
-        // 1. Responder al remitente en WhatsApp
-        if (datos.reply) {
-          await sock.sendMessage(remoteJid, { text: datos.reply });
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          console.error('⚠️ El servidor en ' + LOCAL_API_URL + ' no devolvió JSON. Asegúrate de haber iniciado CLIC_AQUI_INICIAR_WINDOWS.bat para que http://localhost:3000 esté activo.');
+          continue;
         }
 
-        // 2. Si el administrador aprobó un Pago Móvil escribiendo "approved" o "aprobado", notificar al cliente y pedir Cédula y Nombre
-        if (datos.action === 'ADMIN_APPROVE_PAYMENT' && datos.approvedPayment?.clientPhone && datos.clientNotificationMessage) {
-          const jidClienteAprobado = telefonoAJid(datos.approvedPayment.clientPhone);
+        const datos = await res.json();
+
+        // 1. Responder al remitente en WhatsApp (funciona con @s.whatsapp.net y @lid)
+        if (datos.reply) {
+          await sock.sendMessage(replyJid, { text: datos.reply });
+        }
+
+        // 2. Si el administrador aprobó un Pago Móvil escribiendo "approved" o "aprobado", notificar al cliente
+        if (datos.action === 'ADMIN_APPROVE_PAYMENT' && (datos.targetClientPhone || datos.approvedPayment?.clientPhone) && datos.clientNotificationMessage) {
+          const telAprobado = datos.targetClientPhone || datos.approvedPayment.clientPhone;
+          const jidClienteAprobado = telefonoAJid(telAprobado);
           if (jidClienteAprobado) {
             await sock.sendMessage(jidClienteAprobado, {
               text: datos.clientNotificationMessage,
             });
-            console.log('✅ Pago aprobado por Admin -> Notificación enviada al cliente:', datos.approvedPayment.clientPhone);
+            console.log('✅ Pago aprobado por Admin -> Notificación enviada al cliente:', telAprobado);
           }
         }
 
@@ -799,7 +916,7 @@ async function iniciarBotFormaGym() {
           }
         }
 
-        // 4. Si es un pago o soporte del cliente, reenviar automáticamente al teléfono del encargado (con la foto si la envió)
+        // 4. Si es un pago o soporte del cliente, reenviar automáticamente al teléfono del encargado
         const telefonoEncargado = datos.redirectedToPhone || datos.designatedSupportPhone;
         const mensajeReenviado = datos.forwardedPaymentNotification || datos.forwardedMessageFormatted;
 
@@ -818,7 +935,7 @@ async function iniciarBotFormaGym() {
           }
         }
       } catch (err) {
-        console.error('Error procesando mensaje:', err.message);
+        console.error('Error conectando con http://localhost:3000 (asegúrate de encender el servidor con CLIC_AQUI_INICIAR_WINDOWS.bat):', err.message);
       }
     }
   });
@@ -842,545 +959,307 @@ iniciarBotFormaGym();
   };
 
   return (
-    <div className="space-y-6">
-      {/* 0. STANDALONE 24/7 WEBSITE LINK & MASTER POWER CONTROL (SEPARATE FROM AI STUDIO) */}
-      <div className="bg-slate-900 text-white border border-slate-800 rounded-xl p-6 space-y-5 shadow-lg">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider ${
-                  botRunning247
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                }`}
-              >
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    botRunning247 ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-                  }`}
-                />
-                {botRunning247
-                  ? 'Modo 24/7 Activo — Corriendo Continuamente'
-                  : 'Sistema en Pausa (Apagado Manualmente)'}
-              </span>
-              <span className="text-xs font-mono text-slate-400">
-                • {formatUptime(uptimeSeconds)}
-              </span>
-            </div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Globe className="w-5 h-5 text-emerald-400 shrink-0" />
-              <span>
-                Enlace Directo de tu Página Web Independiente 24/7 ({settings.businessName})
-              </span>
-            </h2>
-            <p className="text-xs text-slate-300 max-w-3xl leading-relaxed">
-              Usa cualquiera de estos enlaces para abrir el programa completo en una pestaña independiente, en la computadora del gimnasio o en tu celular,{' '}
-              <strong className="text-white">totalmente separado de la página de AI Studio</strong>. El bot y la base de datos se mantienen encendidos 24/7 hasta que decidas apagarlos con el botón de la derecha.
-            </p>
-          </div>
+    <div className="space-y-5">
+      {/* CLEAN, SIMPLE TOP SUB-NAVIGATION FOR SETTINGS (NO OVERLOAD) */}
+      <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSettingsViewTab('pm2_bot')}
+            className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer ${
+              settingsViewTab === 'pm2_bot'
+                ? 'bg-emerald-600 text-white shadow-2xs'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+            }`}
+          >
+            <Power className="w-4 h-4" />
+            <span>1. Ejecutable Doble Clic (PM2 + Baileys) y QR</span>
+          </button>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {botRunning247 ? (
-              <button
-                type="button"
-                disabled={isToggling247}
-                onClick={() => handleToggle247Power(false)}
-                className="px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-500/40 text-xs font-bold rounded-lg flex items-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <PowerOff className="w-4 h-4 text-red-400" />
-                <span>Apagar Bot / Pausar 24/7</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={isToggling247}
-                onClick={() => handleToggle247Power(true)}
-                className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-lg flex items-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <Power className="w-4 h-4" />
-                <span>Encender Bot y Sistema 24/7</span>
-              </button>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => setSettingsViewTab('config_form')}
+            className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer ${
+              settingsViewTab === 'config_form'
+                ? 'bg-emerald-600 text-white shadow-2xs'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+            }`}
+          >
+            <Phone className="w-4 h-4" />
+            <span>2. Precios, Tasas y Teléfonos del Bot</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSettingsViewTab('wiki_db')}
+            className={`px-4 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer ${
+              settingsViewTab === 'wiki_db'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+            }`}
+          >
+            <Database className="w-4 h-4" />
+            <span>3. Wiki del Código y Descargar Excel / Base de Datos</span>
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Link 1: Main Direct Live Server URL */}
-          <div className="p-4 rounded-xl bg-slate-950 border border-emerald-500/40 space-y-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
-                1. Enlace Web Directo de FormaGym (Servidor 24/7 Activo)
-              </span>
-              <span className="text-[11px] font-semibold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded">
-                Enlace Principal Activo
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={liveWebUrl}
-                className="w-full px-3 py-2 text-xs font-mono bg-slate-900 border border-slate-700 rounded-lg text-emerald-300 select-all"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  copyToClipboardSafe(liveWebUrl);
-                  setCopiedDevUrl(true);
-                  setTimeout(() => setCopiedDevUrl(false), 2500);
-                }}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer"
-              >
-                {copiedDevUrl ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5" />
-                )}
-                <span>{copiedDevUrl ? 'Copiado' : 'Copiar'}</span>
-              </button>
-              <a
-                href={liveWebUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Abrir Web</span>
-              </a>
-            </div>
-            <p className="text-[11px] text-slate-400">
-              Ábrelo en una nueva pestaña o guárdalo en Favoritos. Entra directo al panel sin bloqueos y guarda cada cambio en tiempo real.
-            </p>
-          </div>
-
-          {/* Link 2: Fullscreen Standalone App Mode */}
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-sky-400 uppercase tracking-wider">
-                2. Enlace Web Modo Pantalla Completa Independiente
-              </span>
-              <span className="text-[11px] text-slate-400">Acceso directo sin paneles</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={standaloneFullUrl}
-                className="w-full px-3 py-2 text-xs font-mono bg-slate-900 border border-slate-700 rounded-lg text-sky-300 select-all"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  copyToClipboardSafe(standaloneFullUrl);
-                  setCopiedProdUrl(true);
-                  setTimeout(() => setCopiedProdUrl(false), 2500);
-                }}
-                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer"
-              >
-                {copiedProdUrl ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5" />
-                )}
-                <span>{copiedProdUrl ? 'Copiado' : 'Copiar'}</span>
-              </button>
-              <a
-                href={standaloneFullUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3.5 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Abrir Web</span>
-              </a>
-            </div>
-            <p className="text-[11px] text-slate-400">
-              Conectado a la misma base de datos 24/7 del gimnasio para que todos tus cambios persistan al recargar.
-            </p>
-          </div>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-slate-800/70 border border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-200">
-          <div className="flex items-center gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${
+              baileysStatus.connectionState === 'connected'
+                ? 'bg-emerald-100 text-emerald-900'
+                : 'bg-slate-100 text-slate-700'
+            }`}
+          >
+            <Wifi className="w-3.5 h-3.5 text-emerald-600" />
             <span>
-              <strong>¿Cómo hacer cambios en el futuro?</strong> Usa tu enlace independiente todos los días. Cuando quieras modificar algo del diseño o del bot, simplemente abre de nuevo este proyecto aquí en AI Studio, pide el cambio y se actualizará al instante sin perder tus membresías ni productos.
+              {baileysStatus.connectionState === 'connected'
+                ? `WhatsApp Activo (${baileysStatus.connectedPhone})`
+                : 'WhatsApp: Listo para vincular'}
             </span>
-          </div>
+          </span>
         </div>
       </div>
 
-      {/* 0B. INTERACTIVE WIKIPEDIA-STYLE GUIDE WITH CLICKABLE BLUE CODE EXPLANATIONS & ONE-CLICK LAUNCHERS */}
-      <InteractiveWikiGuide
-        localUrl={localUrl}
-        lanUrl={lanUrl}
-        onDownloadOrganizedExcel={onDownloadOrganizedExcel}
-        onDownloadOrganizedJson={onDownloadOrganizedJson}
-      />
-
-      {/* 1. LIVE BAILEYS WHATSAPP CONNECTION ENGINE (DIRECT QR OR PAIRING CODE + STEP-BY-STEP GUIDE) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-          <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-              Conexión Directa a WhatsApp con Baileys (@whiskeysockets/baileys)
-            </span>
-            <h2 className="text-lg font-bold text-slate-900">
-              Conectar el Bot de {settings.businessName} al Número de Teléfono donde Correrá
-            </h2>
-            <p className="text-xs text-slate-600 max-w-3xl">
-              Baileys conecta el bot directamente al WhatsApp de tu teléfono como un{' '}
-              <strong>Dispositivo Vinculado</strong> (igual que WhatsApp Web), sin necesidad de pagar APIs externas. Puedes vincularlo aquí mismo en pantalla o descargando el archivo para tu PC.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {baileysStatus.connectionState === 'connected' ? (
-              <span className="px-3 py-1.5 bg-emerald-100 text-emerald-900 text-xs font-bold rounded-lg flex items-center gap-1.5">
-                <Wifi className="w-4 h-4 text-emerald-600" />
-                <span>Conectado en {baileysStatus.connectedPhone}</span>
-              </span>
-            ) : (
-              <span className="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg">
-                Estado: {baileysStatus.connectionState === 'qr_ready' ? 'Esperando Escaneo' : baileysStatus.connectionState === 'connecting' ? 'Conectando...' : 'Sin Vincular'}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Live Interactive Baileys QR / Pairing Code Box */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-slate-900 text-white rounded-xl p-5">
-          <div className="lg:col-span-7 space-y-4">
-            <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <QrCode className="w-5 h-5 text-emerald-400" />
-                <span>Opción A (Inmediata): Vincular con Baileys directamente desde este Panel</span>
-              </h3>
-              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                El servidor ya tiene instalado <strong>@whiskeysockets/baileys</strong>. Elige si prefieres escanear un <strong>Código QR</strong> o escribir el número de teléfono para recibir un <strong>Código de 8 dígitos</strong> en tu WhatsApp:
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Method 1: Generate QR */}
-              <div className="bg-slate-800/90 border border-slate-700 rounded-xl p-4 space-y-3">
-                <div className="text-xs font-bold text-emerald-400">
-                  1. Vincular Escaneando Código QR
-                </div>
-                <p className="text-[11px] text-slate-300 leading-relaxed">
-                  Abre WhatsApp en el celular del gimnasio → toca los 3 puntos (o Configuración) →{' '}
-                  <strong>Dispositivos vinculados</strong> → <strong>Vincular un dispositivo</strong>.
+      {/* =====================================================================
+          TAB 1: SIMPLE PM2 + BAILEYS EXECUTABLE & WHATSAPP CONNECTION
+      ===================================================================== */}
+      {settingsViewTab === 'pm2_bot' && (
+        <div className="space-y-5">
+          {/* Card 1: Integrated PM2 + Baileys Double-Click Executable & Simple Guide */}
+          <div className="bg-white border-2 border-emerald-200 rounded-xl p-6 space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
+              <div className="space-y-1 max-w-2xl">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-emerald-100 text-emerald-900 text-[11px] font-bold uppercase">
+                  Todo Integrado en 1 Solo Archivo (Sin Comandos)
+                </span>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Ejecutable de Doble Clic con PM2 + Bot Baileys Local Integrado
+                </h2>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Ya no necesitas abrir el bot manual por separado. Este ejecutable lleva{' '}
+                  <strong>PM2 + el Servidor Web + el Bot Baileys Local integrados adentro</strong> (y con{' '}
+                  <code className="font-mono bg-slate-100 px-1 rounded">esbuild ^0.28.0</code> listo). Solo hazle doble clic y todo funciona sin el error de HTML.
                 </p>
-                <button
-                  type="button"
-                  disabled={isTriggeringBaileys}
-                  onClick={handleStartBaileysQr}
-                  className="w-full py-2.5 px-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <QrCode className="w-4 h-4" />
-                  <span>Generar Código QR en Pantalla</span>
-                </button>
               </div>
 
-              {/* Method 2: Generate 8-digit Pairing Code by Phone Number */}
-              <div className="bg-slate-800/90 border border-slate-700 rounded-xl p-4 space-y-2.5">
-                <div className="text-xs font-bold text-sky-400">
-                  2. O Vincular con Número (Código de 8 dígitos)
-                </div>
-                <p className="text-[11px] text-slate-300">
-                  Escribe el número de WhatsApp donde correrá el bot (ej. <code className="text-white">+58 414-6734866</code>):
-                </p>
-                <input
-                  type="text"
-                  value={pairingPhoneInput}
-                  onChange={(e) => setPairingPhoneInput(e.target.value)}
-                  placeholder="+58 414-6734866"
-                  className="w-full px-3 py-1.5 text-xs font-mono bg-slate-950 border border-slate-700 rounded-lg text-white"
-                />
+              {/* Clean Download Buttons for Start & Stop Executables */}
+              <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   type="button"
-                  disabled={isTriggeringBaileys}
-                  onClick={handleStartBaileysPairingCode}
-                  className="w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  onClick={handleDownloadWindowsLauncher}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 shadow-xs cursor-pointer"
                 >
-                  <KeyRound className="w-4 h-4" />
-                  <span>Obtener Código de 8 Dígitos</span>
+                  <Download className="w-4 h-4" />
+                  <span>1. Descargar INICIAR (Windows .bat con PM2)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadWindowsStopLauncher}
+                  className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 shadow-xs cursor-pointer"
+                >
+                  <PowerOff className="w-4 h-4" />
+                  <span>2. Descargar APAGAR PM2 (Windows .bat)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadUnixLauncher}
+                  className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Mac / Linux (.command)</span>
                 </button>
               </div>
             </div>
 
-            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="text-slate-300">{baileysStatus.statusMessage}</span>
+            {/* Simple 3-Box Visual Guide: How to Start, What PM2 Does, How to Stop */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Box 1: How to turn it on */}
+              <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-2">
+                <div className="text-xs font-bold text-emerald-900 uppercase">
+                  PASO 1 — Cómo Encender Todo
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Solo haz Doble Clic en Iniciar
+                </h3>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Guarda <code className="font-mono font-bold">CLIC_AQUI_INICIAR_WINDOWS.bat</code> dentro de la carpeta del proyecto (ya viene incluido ahí también) y hazle <strong>doble clic</strong>.
+                </p>
+                <p className="text-[11px] text-emerald-900 font-semibold">
+                  ✓ Instala las librerías solo, configura PM2, enciende Baileys Local y te abre http://localhost:3000.
+                </p>
+              </div>
+
+              {/* Box 2: What PM2 is and how it works inside */}
+              <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 space-y-2">
+                <div className="text-xs font-bold text-blue-900 uppercase">
+                  PASO 2 — ¿Qué hace PM2 por dentro?
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Mantiene el Bot Vivo 24/7 sin Caerse
+                </h3>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  El propio ejecutable crea el archivo <code className="font-mono">ecosystem.config.cjs</code> y arranca el proceso <code className="font-mono font-bold">formagym-bot-24-7</code> con <code className="font-mono">AUTO_START_BAILEYS=true</code>.
+                </p>
+                <p className="text-[11px] text-blue-900 font-semibold">
+                  ✓ Si cierras la ventana negra o falla el internet, PM2 mantiene el bot encendido en segundo plano y lo reinicia solo en 3 segundos.
+                </p>
+              </div>
+
+              {/* Box 3: How to turn it off */}
+              <div className="p-4 rounded-xl bg-rose-50/60 border border-rose-200 space-y-2">
+                <div className="text-xs font-bold text-rose-900 uppercase">
+                  PASO 3 — Cómo Apagar PM2
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Doble Clic en el Botón de Apagado
+                </h3>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  Como PM2 sigue corriendo oculto en segundo plano aunque cierres la ventana, para apagarlo de verdad haz <strong>doble clic</strong> en <code className="font-mono font-bold">APAGAR_SERVIDOR_Y_PM2_WINDOWS.bat</code>.
+                </p>
+                <p className="text-[11px] text-rose-900 font-semibold">
+                  ✓ O si usas terminal: <code className="font-mono bg-white px-1 rounded">npm run pm2:stop</code> para apagar y <code className="font-mono bg-white px-1 rounded">npm run pm2:logs</code> para ver mensajes.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Clean WhatsApp QR / 8-Digit Pairing Box */}
+          <div className="bg-slate-900 text-white rounded-xl p-6 space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                  Vincular el Número de WhatsApp del Gimnasio
+                </span>
+                <h3 className="text-base font-bold text-white mt-0.5">
+                  Escanea el Código QR o usa el Código de 8 Dígitos
+                </h3>
+              </div>
               {baileysStatus.connectionState !== 'disconnected' && (
                 <button
                   type="button"
                   onClick={handleDisconnectBaileys}
-                  className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 rounded font-semibold flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                 >
                   <PowerOff className="w-3.5 h-3.5" />
                   <span>Desconectar / Cambiar Número</span>
                 </button>
               )}
             </div>
-          </div>
 
-          {/* Right Side: QR Display / Pairing Code Display / Live Activity Log */}
-          <div className="lg:col-span-5 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 rounded-xl p-5 min-h-[260px]">
-            {baileysStatus.connectionState === 'connected' ? (
-              <div className="text-center space-y-3">
-                <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto">
-                  <Check className="w-7 h-7" />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+              <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-slate-800/90 border border-slate-700 rounded-xl p-4 space-y-3">
+                  <div className="text-xs font-bold text-emerald-400">
+                    Opción 1: Escanear Código QR
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    En el celular del gimnasio abre WhatsApp → <strong>Dispositivos vinculados</strong> → <strong>Vincular un dispositivo</strong>.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={isTriggeringBaileys}
+                    onClick={handleStartBaileysQr}
+                    className="w-full py-2.5 px-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    <span>Generar Código QR</span>
+                  </button>
                 </div>
-                <h4 className="text-base font-bold text-white">
-                  ¡Bot FormaGym Activo en WhatsApp!
-                </h4>
-                <p className="text-xs font-mono text-emerald-400">
-                  Número conectado: {baileysStatus.connectedPhone}
-                </p>
-                <p className="text-xs text-slate-400 max-w-xs">
-                  El bot ya está respondiendo mensajes en español, calculando precios en Bs. y reenviando fotos de pago a tus números encargados.
-                </p>
-              </div>
-            ) : baileysStatus.pairingCode ? (
-              <div className="text-center space-y-3">
-                <span className="text-xs font-bold uppercase text-sky-400">
-                  Código de Vinculación de WhatsApp
-                </span>
-                <div className="px-5 py-3 bg-slate-900 border-2 border-sky-500 rounded-xl font-mono text-2xl font-bold tracking-widest text-white">
-                  {baileysStatus.pairingCode}
-                </div>
-                <p className="text-xs text-slate-300 max-w-xs">
-                  En tu teléfono abre WhatsApp → <strong>Dispositivos vinculados</strong> →{' '}
-                  <strong>Vincular con el número de teléfono</strong> y escribe este código.
-                </p>
-              </div>
-            ) : baileysStatus.qrDataUrl ? (
-              <div className="text-center space-y-2.5">
-                <span className="text-xs font-bold text-emerald-400">
-                  Escanea este Código QR con el WhatsApp del Gimnasio:
-                </span>
-                <div className="bg-white p-2.5 rounded-xl inline-block">
-                  <img
-                    src={baileysStatus.qrDataUrl}
-                    alt="Código QR de WhatsApp Baileys"
-                    className="w-52 h-52 object-contain"
+
+                <div className="bg-slate-800/90 border border-slate-700 rounded-xl p-4 space-y-2.5">
+                  <div className="text-xs font-bold text-sky-400">
+                    Opción 2: Código de 8 Dígitos
+                  </div>
+                  <input
+                    type="text"
+                    value={pairingPhoneInput}
+                    onChange={(e) => setPairingPhoneInput(e.target.value)}
+                    placeholder="+58 414-6734866"
+                    className="w-full px-3 py-1.5 text-xs font-mono bg-slate-950 border border-slate-700 rounded-lg text-white"
                   />
+                  <button
+                    type="button"
+                    disabled={isTriggeringBaileys}
+                    onClick={handleStartBaileysPairingCode}
+                    className="w-full py-2 px-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                    <span>Obtener Código de 8 Dígitos</span>
+                  </button>
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  WhatsApp → Dispositivos vinculados → Vincular un dispositivo
-                </p>
               </div>
-            ) : (
-              <div className="text-center space-y-2 text-slate-400">
-                <QrCode className="w-10 h-10 mx-auto text-slate-600" />
-                <p className="text-xs font-semibold text-slate-300">
-                  Haz clic en &ldquo;Generar Código QR&rdquo; o &ldquo;Obtener Código de 8 Dígitos&rdquo;
-                </p>
-                <p className="text-[11px] text-slate-500 max-w-xs">
-                  El código aparecerá aquí al instante para vincular el teléfono donde funcionará el bot.
-                </p>
+
+              <div className="lg:col-span-5 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 rounded-xl p-5 min-h-[210px]">
+                {baileysStatus.connectionState === 'connected' ? (
+                  <div className="text-center space-y-2">
+                    <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto">
+                      <Check className="w-6 h-6" />
+                    </div>
+                    <h4 className="text-sm font-bold text-white">
+                      ¡WhatsApp Conectado ({baileysStatus.connectedPhone})!
+                    </h4>
+                    <p className="text-[11px] text-slate-400">
+                      El bot ya responde mensajes y procesa pagos automáticamente.
+                    </p>
+                  </div>
+                ) : baileysStatus.pairingCode ? (
+                  <div className="text-center space-y-2">
+                    <span className="text-xs font-bold uppercase text-sky-400">
+                      Código de 8 Dígitos:
+                    </span>
+                    <div className="px-5 py-2.5 bg-slate-900 border-2 border-sky-500 rounded-xl font-mono text-xl font-bold tracking-widest text-white">
+                      {baileysStatus.pairingCode}
+                    </div>
+                  </div>
+                ) : baileysStatus.qrDataUrl ? (
+                  <div className="text-center space-y-2">
+                    <div className="bg-white p-2 rounded-xl inline-block">
+                      <img
+                        src={baileysStatus.qrDataUrl}
+                        alt="Código QR WhatsApp"
+                        className="w-44 h-44 object-contain"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center space-y-1.5 text-slate-400">
+                    <QrCode className="w-8 h-8 mx-auto text-slate-600" />
+                    <p className="text-xs font-semibold text-slate-300">
+                      Pulsa &ldquo;Generar Código QR&rdquo; para vincular
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Beginner-Friendly Step-by-Step Explanation to Run Baileys on Any PC if Desired */}
-        <div className="border-t border-slate-200 pt-5 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* =====================================================================
+          TAB 3: INTERACTIVE WIKI & DATABASE DOWNLOADS
+      ===================================================================== */}
+      {settingsViewTab === 'wiki_db' && (
+        <InteractiveWikiGuide
+          localUrl={localUrl}
+          lanUrl={lanUrl}
+          onDownloadOrganizedExcel={onDownloadOrganizedExcel}
+          onDownloadOrganizedJson={onDownloadOrganizedJson}
+        />
+      )}
+
+      {/* =====================================================================
+          TAB 2: CENTRALIZED BOT & PHONE NUMBERS CONFIGURATION FORM
+      ===================================================================== */}
+      {settingsViewTab === 'config_form' && (
+        <form
+          onSubmit={handleSaveAllConfig}
+          className="bg-white border border-slate-200 rounded-xl p-6 space-y-6"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-700">
-                Guía Explicada Paso a Paso (Para Cualquier Persona sin Experiencia)
-              </span>
-              <h3 className="text-base font-bold text-slate-900 mt-0.5">
-                Opción B: Cómo ejecutar el Bot con Baileys en la Computadora del Gimnasio en 3 Pasos Simples
-              </h3>
-              <p className="text-xs text-slate-600">
-                Si prefieres tener el programa de Baileys abierto también en tu propia computadora de escritorio o laptop, sigue estos 3 pasos:
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleDownloadBaileysScript}
-                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-2 cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>Descargar bot_baileys_formagym.js</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(buildBaileysStandaloneScript());
-                  setCopiedCode(true);
-                  setTimeout(() => setCopiedCode(false), 2500);
-                }}
-                className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
-              >
-                {copiedCode ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                <span>{copiedCode ? 'Código Copiado' : 'Copiar Código'}</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-              <span className="text-xs font-bold text-emerald-800">
-                PASO 1 — Instalar Node.js y Guardar el Archivo
-              </span>
-              <h4 className="text-sm font-bold text-slate-900">
-                Crea una carpeta en tu Escritorio
-              </h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                1. Si no tienes Node.js, entra en <strong>nodejs.org</strong>, descarga el botón verde <strong>LTS</strong> e instálalo dando clic en <em>Siguiente</em>.<br />
-                2. Crea una carpeta en tu Escritorio llamada <code className="font-mono font-bold text-slate-900">FormaGymBot</code> y mete adentro el archivo <strong>bot_baileys_formagym.js</strong> que descargaste arriba.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-blue-800">
-                  PASO 2 — Instalar Baileys y Encender
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(
-                      'npm init -y && npm install @whiskeysockets/baileys qrcode-terminal pino && node bot_baileys_formagym.js'
-                    );
-                    setCopiedCmd(true);
-                    setTimeout(() => setCopiedCmd(false), 2500);
-                  }}
-                  className="text-[11px] font-semibold text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  {copiedCmd ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                  <span>{copiedCmd ? 'Copiado' : 'Copiar comando'}</span>
-                </button>
-              </div>
-              <h4 className="text-sm font-bold text-slate-900">
-                Pega este comando en la Terminal (CMD)
-              </h4>
-              <p className="text-xs text-slate-600">
-                Abre la carpeta <code className="font-mono">FormaGymBot</code>, escribe <code className="font-mono font-bold">cmd</code> en la barra de dirección de arriba, presiona Enter y pega:
-              </p>
-              <pre className="p-2.5 rounded-lg bg-slate-900 text-emerald-300 font-mono text-[11px] overflow-x-auto">
-                npm init -y && npm install @whiskeysockets/baileys qrcode-terminal pino{'\n'}node bot_baileys_formagym.js
-              </pre>
-            </div>
-
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-              <span className="text-xs font-bold text-purple-800">
-                PASO 3 — Escanear el QR con tu Celular
-              </span>
-              <h4 className="text-sm font-bold text-slate-900">
-                Vincular el WhatsApp del Gimnasio
-              </h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                1. En la ventana negra aparecerá un <strong>Código QR grande</strong>.<br />
-                2. Toma el celular que tiene el número de WhatsApp del gimnasio, abre WhatsApp → <strong>Dispositivos vinculados</strong> → <strong>Vincular un dispositivo</strong> y apunta la cámara al QR.<br />
-                3. ¡Listo! Quedará guardado en la carpeta <code className="font-mono">sesion_whatsapp_formagym</code> para que no tengas que volver a escanearlo.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. EXACT DATA STORAGE LOCATION & ORGANIZED DOWNLOADS */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-          <div className="space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-              Ubicación Exacta de tus Datos Financieros (Nube + Respaldo Local)
-            </span>
-            <h2 className="text-lg font-bold text-slate-900">
-              ¿Dónde se guarda exactamente toda la información y los pagos de {settings.businessName}?
-            </h2>
-            <p className="text-xs text-slate-600">
-              Tus datos están sincronizados en la nube y respaldados localmente para proteger cada pago recibido.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              onClick={onDownloadOrganizedExcel}
-              className="px-4 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Descargar Base de Datos en Excel (.CSV)</span>
-            </button>
-            <button
-              type="button"
-              onClick={onDownloadOrganizedJson}
-              className="px-4 py-2.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-lg flex items-center gap-2 cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>Descargar Base de Datos Organizada (.JSON)</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-emerald-800">
-              <Database className="w-4 h-4" />
-              <span>1. Base de Datos Permanente 24/7 del Sistema</span>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              <strong>ID del Sistema:</strong>{' '}
-              <code className="font-mono text-[11px] bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                ai-studio-7f6c7aef-5816-4e5d-af50-94313fbe6f39
-              </code>
-            </p>
-            <ul className="text-xs text-slate-600 space-y-1 font-mono">
-              <li>• /memberships ({memberships.length} registros)</li>
-              <li>• /shop_orders ({shopOrders.length} pedidos)</li>
-              <li>• /products ({products.length} productos)</li>
-              <li>• /exchange_settings (Configuración y tasas)</li>
-            </ul>
-            <p className="text-[11px] text-emerald-700 font-semibold">
-              Estado: Sincronización Automática 24/7 Activa
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
-              <Database className="w-4 h-4 text-blue-600" />
-              <span>2. Servidor & Memoria Local Automática</span>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Cada cambio se escribe instantáneamente en el disco del servidor y en tu navegador:
-            </p>
-            <ul className="text-xs text-slate-600 space-y-1 font-mono">
-              <li>• Archivo: /formagym_local_db.json</li>
-              <li>• LocalStorage: formagym_local_db_v1</li>
-              <li>• Historial Eliminados: {deletedMemberships.length} guardados</li>
-            </ul>
-          </div>
-
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
-              <HardDrive className="w-4 h-4 text-amber-600" />
-              <span>3. Descarga Directa a tu PC (Excel / JSON)</span>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Los botones de arriba descargan un archivo organizado con todas las tablas:
-              <strong> Membresías Activas/Pendientes</strong>,{' '}
-              <strong>Membresías Eliminadas</strong>, <strong>Pedidos de Tienda</strong> y{' '}
-              <strong>Lista de Precios</strong>.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. CENTRALIZED BOT & PHONE NUMBERS CONFIGURATION FORM */}
-      <form
-        onSubmit={handleSaveAllConfig}
-        className="bg-white border border-slate-200 rounded-xl p-6 space-y-6"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
-          <div>
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Panel Central de Configuración del Bot
             </span>
@@ -1932,7 +1811,9 @@ iniciarBotFormaGym();
             </div>
           </div>
         </div>
-      </form>
+        </form>
+      )}
     </div>
   );
 };
+
