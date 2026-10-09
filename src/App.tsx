@@ -3713,7 +3713,45 @@ export function App() {
         {activeSection === 'shop' && (
           <ShopSection
             products={products}
+            shopOrders={shopOrders}
             settings={settings}
+            onCreateClothesPayment={async (payload) => {
+              const rateVal = settings.activeRate || 68.45;
+              const bsVal = payload.amountBs !== undefined ? payload.amountBs : 0;
+              const usdVal =
+                payload.amountUsd !== undefined
+                  ? payload.amountUsd
+                  : bsVal > 0 && rateVal > 0
+                  ? Number((bsVal / rateVal).toFixed(2))
+                  : 0;
+              await upsertShopOrderRecord(
+                {
+                  id: sanitizeId(`order_clothes_${Date.now()}`),
+                  ownerId: user?.uid || 'local_owner',
+                  phone: payload.phone,
+                  itemsSummary: `Ropa (Catálogo): ${payload.clothesDescription}`,
+                  categoryGroup: 'ropa',
+                  status: 'pending_approval',
+                  totalUsd: usdVal,
+                  totalBs: bsVal,
+                  paymentRef: payload.operationRef,
+                  pagoMovilTarget: settings.ownerPhoneMemberships,
+                  receiptImageUrl: payload.receiptImageUrl,
+                  scannedAmountBs: bsVal,
+                  expectedAmountBs: bsVal,
+                  paymentNote: payload.paymentNote || `Prenda declarada por el cliente: ${payload.clothesDescription}`,
+                  createdAtIso: new Date().toISOString(),
+                },
+                true
+              );
+              showNotice(
+                `Pago de ropa ("${payload.clothesDescription}") registrado en cola para confirmar.`,
+                'success'
+              );
+            }}
+            onApproveClothesPayment={handleHumanConfirmShopOrder}
+            onRejectClothesPayment={handleDeleteShopOrderRecord}
+            onPreviewReceipt={(data) => setPreviewReceiptModal(data)}
             onSaveSettings={async (nextSettings: ExchangeSettings, silent = false) => {
               const hasMem = products.some((p) => p.category === 'membresias');
               const nextProducts: ProductItem[] = !hasMem

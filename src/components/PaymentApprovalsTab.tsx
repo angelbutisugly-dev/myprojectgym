@@ -745,10 +745,10 @@ export const PaymentApprovalsTab: React.FC<PaymentApprovalsTabProps> = ({
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <div>
               <h3 className="text-sm font-bold text-slate-900">
-                2. Pagos de Productos / Tienda por Aprobar ({pendingOrders.length})
+                2. Pagos de Productos / Tienda y Ropa por Aprobar ({pendingOrders.length})
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Jugos/Agua/Comida: {settings.ownerPhoneConsumables} (BDV 17636777)
+                Jugos/Agua/Comida: {settings.ownerPhoneConsumables} · Ropa (Catálogo Abierto): {settings.ownerPhoneMemberships}
               </p>
             </div>
           </div>
@@ -756,12 +756,13 @@ export const PaymentApprovalsTab: React.FC<PaymentApprovalsTabProps> = ({
           {filteredPendingOrders.length === 0 ? (
             <div className="py-8 text-center border border-dashed border-slate-200 rounded-xl text-xs text-slate-500">
               {pendingOrders.length === 0
-                ? 'No hay pagos de productos pendientes por aprobar.'
-                : 'Ningún pago de tienda pendiente coincide con el filtro actual.'}
+                ? 'No hay pagos de productos ni de ropa pendientes por aprobar.'
+                : 'Ningún pago de tienda o ropa pendiente coincide con el filtro actual.'}
             </div>
           ) : (
             <div className="space-y-3">
               {filteredPendingOrders.map((ord) => {
+                const isClothes = ord.categoryGroup === 'ropa';
                 const scannedBs = ord.scannedAmountBs ?? ord.totalBs;
                 const expectedBs = ord.expectedAmountBs ?? ord.totalBs;
                 const diffBs = Math.abs(scannedBs - expectedBs);
@@ -770,7 +771,11 @@ export const PaymentApprovalsTab: React.FC<PaymentApprovalsTabProps> = ({
                 return (
                   <div
                     key={ord.id}
-                    className="border border-slate-200 rounded-xl p-4 bg-slate-50/60 space-y-3"
+                    className={`border rounded-xl p-4 space-y-3 ${
+                      isClothes
+                        ? 'border-indigo-300 bg-indigo-50/40'
+                        : 'border-slate-200 bg-slate-50/60'
+                    }`}
                   >
                     <div className="flex items-start gap-3">
                       {ord.receiptImageUrl ? (
@@ -807,6 +812,11 @@ export const PaymentApprovalsTab: React.FC<PaymentApprovalsTabProps> = ({
 
                       <div className="space-y-1.5 min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
+                          {isClothes && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-600 text-white">
+                              👕 Ropa (Catálogo Abierto • Sin Precio/Stock Fijo)
+                            </span>
+                          )}
                           <span className="text-xs font-bold text-slate-900 font-mono tabular-nums">
                             {ord.phone}
                           </span>
@@ -816,11 +826,14 @@ export const PaymentApprovalsTab: React.FC<PaymentApprovalsTabProps> = ({
                         </div>
 
                         <p className="text-xs font-semibold text-slate-800">
-                          Productos: {ord.itemsSummary}
+                          {isClothes ? '¿Qué ropa dice que pagó?: ' : 'Productos: '}
+                          <span className={isClothes ? 'text-indigo-950 font-bold' : ''}>
+                            {ord.itemsSummary}
+                          </span>
                         </p>
                         {ord.paymentNote && (
                           <p className="text-[11px] text-amber-800 font-medium">
-                            Nota / Excepción: {ord.paymentNote}
+                            Nota / Detalle: {ord.paymentNote}
                           </p>
                         )}
 
@@ -828,33 +841,41 @@ export const PaymentApprovalsTab: React.FC<PaymentApprovalsTabProps> = ({
                         <div className="bg-white border border-slate-200 rounded-lg p-2.5 space-y-1">
                           <div className="flex items-center justify-between gap-4 text-xs">
                             <span className="text-slate-500 font-medium">
-                              Monto escaneado en pago:
+                              {isClothes ? 'Monto reportado / escaneado en pago:' : 'Monto escaneado en pago:'}
                             </span>
                             <span className="font-mono font-bold text-slate-900 tabular-nums">
-                              {formatBsVenezuelan(scannedBs)} Bs
+                              {scannedBs > 0 ? `${formatBsVenezuelan(scannedBs)} Bs` : 'Por verificar en captura'}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-4 text-xs border-t border-slate-100 pt-1">
-                            <span className="text-slate-500 font-medium">
-                              Monto que DEBERÍA decir:
-                            </span>
-                            <span className="font-mono font-bold text-blue-700 tabular-nums">
-                              {formatBsVenezuelan(expectedBs)} Bs (${ord.totalUsd.toFixed(2)})
-                            </span>
-                          </div>
-                          <div className="pt-0.5 text-[11px] font-semibold">
-                            {matchesPrice ? (
-                              <span className="text-emerald-700 flex items-center gap-1">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                El monto escaneado coincide con el pedido
-                              </span>
-                            ) : (
-                              <span className="text-amber-700 flex items-center gap-1">
-                                <AlertTriangle className="w-3.5 h-3.5" />
-                                Pago parcial o diferencia detectada (Dif: Bs. {formatBsVenezuelan(diffBs)})
-                              </span>
-                            )}
-                          </div>
+                          {!isClothes ? (
+                            <>
+                              <div className="flex items-center justify-between gap-4 text-xs border-t border-slate-100 pt-1">
+                                <span className="text-slate-500 font-medium">
+                                  Monto que DEBERÍA decir:
+                                </span>
+                                <span className="font-mono font-bold text-blue-700 tabular-nums">
+                                  {formatBsVenezuelan(expectedBs)} Bs (${ord.totalUsd.toFixed(2)})
+                                </span>
+                              </div>
+                              <div className="pt-0.5 text-[11px] font-semibold">
+                                {matchesPrice ? (
+                                  <span className="text-emerald-700 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    El monto escaneado coincide con el pedido
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-700 flex items-center gap-1">
+                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                    Pago parcial o diferencia detectada (Dif: Bs. {formatBsVenezuelan(diffBs)})
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="pt-1 border-t border-slate-100 text-[11px] text-indigo-800 font-medium">
+                              Catálogo de ropa abierto: verifica que el monto del comprobante corresponda a la prenda indicada por el cliente antes de confirmar.
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

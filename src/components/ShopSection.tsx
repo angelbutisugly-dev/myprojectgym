@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Check, PackageCheck, PackageX, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react';
-import { ExchangeSettings, ProductCategory, ProductItem, RateMode } from '../types';
+import { AlertTriangle, Check, Eye, Image as ImageIcon, PackageCheck, PackageX, Plus, RefreshCw, Save, Shirt, Trash2, X } from 'lucide-react';
+import { ExchangeSettings, ProductCategory, ProductItem, RateMode, ShopOrderRecord } from '../types';
 import { getRateForMode } from '../validation';
 
 export const CATEGORY_LABELS: Record<ProductCategory, string> = {
@@ -8,7 +8,7 @@ export const CATEGORY_LABELS: Record<ProductCategory, string> = {
   agua_hidratacion: 'Agua e Hidratación',
   jugos_saludables: 'Jugos Saludables',
   alimentos: 'Alimentos Saludables',
-  ropa_deportiva: 'Ropa Deportiva',
+  ropa_deportiva: 'Pago de Ropa (Gestor de Pagos)',
 };
 
 export const RATE_MODE_LABELS: Record<RateMode, string> = {
@@ -20,6 +20,24 @@ export const RATE_MODE_LABELS: Record<RateMode, string> = {
 interface ShopSectionProps {
   products: ProductItem[];
   settings: ExchangeSettings;
+  shopOrders?: ShopOrderRecord[];
+  onApproveShopOrder?: (order: ShopOrderRecord) => Promise<void>;
+  onRejectShopOrder?: (orderId: string) => Promise<void>;
+  onCreateClothesPayment?: (payload: {
+    phone: string;
+    clothesDescription: string;
+    operationRef: string;
+    amountBs: number;
+    receiptImageUrl?: string;
+  }) => Promise<void>;
+  onPreviewReceipt?: (data: {
+    imageUrl: string;
+    title: string;
+    phone: string;
+    operationRef: string;
+    scannedBs?: number;
+    expectedBs?: number;
+  }) => void;
   onSaveProductPrices: (updatedProduct: ProductItem, silent?: boolean) => Promise<void>;
   onSaveAllDraftPrices: (updatedProducts: ProductItem[]) => Promise<void>;
   onSaveSettings?: (nextSettings: ExchangeSettings, silent?: boolean) => Promise<void>;
@@ -48,6 +66,11 @@ interface ProductDraft {
 export const ShopSection: React.FC<ShopSectionProps> = ({
   products,
   settings,
+  shopOrders = [],
+  onApproveShopOrder,
+  onRejectShopOrder,
+  onCreateClothesPayment,
+  onPreviewReceipt,
   onSaveProductPrices,
   onSaveAllDraftPrices,
   onSaveSettings,
@@ -60,6 +83,18 @@ export const ShopSection: React.FC<ShopSectionProps> = ({
   const [productToDelete, setProductToDelete] = useState<ProductItem | null>(null);
   const [confirmClearAllProducts, setConfirmClearAllProducts] = useState<boolean>(false);
   const [deleting, setDeleting] = useState<boolean>(false);
+
+  // Open Catalog Clothes Payment Manager state (no price, no stock, no product name)
+  const [clothesPhone, setClothesPhone] = useState<string>('+58 412-');
+  const [clothesPaidWhat, setClothesPaidWhat] = useState<string>('');
+  const [clothesRef, setClothesRef] = useState<string>('');
+  const [clothesAmountBs, setClothesAmountBs] = useState<string>('');
+  const [clothesReceiptUrl, setClothesReceiptUrl] = useState<string>('');
+  const [clothesScanning, setClothesScanning] = useState<boolean>(false);
+
+  const clothesPayments = shopOrders.filter((o) => o.categoryGroup === 'ropa');
+  const pendingClothesPayments = clothesPayments.filter((o) => o.status === 'pending_approval');
+  const confirmedClothesPayments = clothesPayments.filter((o) => o.status === 'confirmed');
 
   // Shared Membership & Registration (Inscripción Vitalicia) state tied to the same rate
   const [sharedMemRateMode, setSharedMemRateMode] = useState<RateMode>(settings.mode || 'auto_bcv');
@@ -707,6 +742,305 @@ export const ShopSection: React.FC<ShopSectionProps> = ({
         </div>
       </div>
 
+      {/* CLOTHES PAYMENT MANAGER (NO PRICE, NO STOCK, NO FIXED PRODUCT NAME) */}
+      <div className="bg-white border-2 border-indigo-200 rounded-xl p-5 space-y-4 shadow-2xs">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-indigo-100 pb-3">
+          <div className="space-y-1 max-w-3xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md">
+                <Shirt className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Gestor de Pagos de Ropa (Sin Precio, Sin Stock ni Nombre de Producto)</span>
+              </span>
+              {pendingClothesPayments.length > 0 && (
+                <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-md text-xs font-bold">
+                  ⏳ {pendingClothesPayments.length} pago(s) de ropa por confirmar
+                </span>
+              )}
+            </div>
+            <h3 className="text-base font-bold text-slate-900">
+              👕 Pagos de Ropa / Catálogo Abierto (Solo Gestión y Confirmación de Pagos)
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Como la ropa es un catálogo completo que no tiene un precio único ni stock fijo aquí,{' '}
+              <strong>no necesitas crear productos para la ropa</strong>. Cuando alguien quiere pagar ropa en el Bot de WhatsApp, el bot le indica que envíe su pago como de costumbre (a la cuenta de Mensualidad y Ropa:{' '}
+              <span className="font-mono font-semibold text-slate-800">04146734866 / BDV 18318153</span>) y{' '}
+              <strong>escriba qué prendas pagó</strong> para que tú lo confirmes aquí o en Aprobar Pagos.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* Left: Submit / Register a Clothes Payment without price or stock */}
+          <div className="lg:col-span-5 bg-indigo-50/50 border border-indigo-200 rounded-xl p-4 space-y-3">
+            <div>
+              <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wider">
+                Registrar Pago de Ropa Recibido (Sin Precio ni Stock Fijo)
+              </h4>
+              <p className="text-[11px] text-slate-600 mt-0.5">
+                Si un cliente envía su pago de ropa, solo se registra <strong>qué prendas pagó</strong> y su comprobante para confirmarlo:
+              </p>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!clothesPaidWhat.trim() || !onCreateClothesPayment) return;
+                await onCreateClothesPayment({
+                  phone: clothesPhone.trim() || '+58 412-0000000',
+                  clothesDescription: `👕 Ropa: ${clothesPaidWhat.trim()}`,
+                  operationRef:
+                    clothesRef.trim() ||
+                    `${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+                  amountBs: Number(clothesAmountBs) || 0,
+                  receiptImageUrl: clothesReceiptUrl || undefined,
+                });
+                setClothesPaidWhat('');
+                setClothesRef('');
+                setClothesAmountBs('');
+                setClothesReceiptUrl('');
+              }}
+              className="space-y-2.5"
+            >
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  ¿Qué ropa o prendas dice el cliente que pagó? *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={clothesPaidWhat}
+                  onChange={(e) => setClothesPaidWhat(e.target.value)}
+                  placeholder="Ej: Conjunto deportivo negro talla M y franela blanca"
+                  className="w-full px-3 py-2 text-xs border border-indigo-200 rounded-lg bg-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Teléfono Cliente
+                  </label>
+                  <input
+                    type="text"
+                    value={clothesPhone}
+                    onChange={(e) => setClothesPhone(e.target.value)}
+                    placeholder="+58 412-1234567"
+                    className="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-200 rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Referencia / Operación
+                  </label>
+                  <input
+                    type="text"
+                    value={clothesRef}
+                    onChange={(e) => setClothesRef(e.target.value)}
+                    placeholder="Ej: 007583657705"
+                    className="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-200 rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                    Monto en Comprobante (Bs)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={clothesAmountBs}
+                    onChange={(e) => setClothesAmountBs(e.target.value)}
+                    placeholder="Opcional"
+                    className="w-full px-2.5 py-1.5 text-xs font-mono border border-slate-200 rounded-lg bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <label className="px-3 py-1.5 bg-white hover:bg-slate-50 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  <span>
+                    {clothesScanning
+                      ? 'Escaneando captura...'
+                      : clothesReceiptUrl
+                      ? 'Captura cargada ✓'
+                      : 'Subir Captura (Opcional)'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = async () => {
+                        const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+                        if (!dataUrl) return;
+                        setClothesReceiptUrl(dataUrl);
+                        setClothesScanning(true);
+                        try {
+                          const res = await fetch('/api/bot/scan-receipt', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              imageBase64DataUrl: dataUrl,
+                              captionText: clothesPaidWhat,
+                            }),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            if (data?.scanned?.operationNumber && !clothesRef) {
+                              setClothesRef(data.scanned.operationNumber);
+                            }
+                            if (
+                              typeof data?.scanned?.amountBs === 'number' &&
+                              data.scanned.amountBs > 0 &&
+                              !clothesAmountBs
+                            ) {
+                              setClothesAmountBs(data.scanned.amountBs.toFixed(2));
+                            }
+                          }
+                        } catch {
+                          // ignore scan error
+                        } finally {
+                          setClothesScanning(false);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Agregar Pago de Ropa para Confirmar</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Right: Clothes Payments Queue (Pending Confirmation & Confirmed) */}
+          <div className="lg:col-span-7 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900">
+                  Pagos de Ropa Recibidos ({pendingClothesPayments.length} pendientes ·{' '}
+                  {confirmedClothesPayments.length} confirmados)
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Revisa qué ropa declaró haber pagado el cliente y confirma su pago.
+                </p>
+              </div>
+            </div>
+
+            {clothesPayments.length === 0 ? (
+              <div className="py-6 text-center border border-dashed border-slate-200 rounded-lg text-xs text-slate-500">
+                Aún no hay pagos de ropa registrados. Cuando un cliente envíe su pago por WhatsApp diciendo qué ropa pagó, aparecerá aquí y en Aprobar Pagos.
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                {clothesPayments.map((ord) => {
+                  const isPending = ord.status === 'pending_approval';
+                  const amountBs = ord.scannedAmountBs ?? ord.totalBs ?? 0;
+                  return (
+                    <div
+                      key={ord.id}
+                      className={`p-3 rounded-lg border flex flex-wrap items-center justify-between gap-3 ${
+                        isPending
+                          ? 'bg-white border-indigo-200 shadow-2xs'
+                          : 'bg-emerald-50/40 border-emerald-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        {ord.receiptImageUrl && onPreviewReceipt && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onPreviewReceipt({
+                                imageUrl: ord.receiptImageUrl!,
+                                title: ord.itemsSummary,
+                                phone: ord.phone,
+                                operationRef: ord.paymentRef,
+                                scannedBs: amountBs,
+                                expectedBs: amountBs,
+                              })
+                            }
+                            className="relative group shrink-0 w-12 h-14 rounded overflow-hidden border border-indigo-300 bg-slate-900 cursor-pointer"
+                            title="Ver comprobante de pago de ropa"
+                          >
+                            <img
+                              src={ord.receiptImageUrl}
+                              alt="Comprobante Ropa"
+                              className="w-full h-full object-cover"
+                            />
+                            <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white">
+                              <Eye className="w-3.5 h-3.5" />
+                            </span>
+                          </button>
+                        )}
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs font-bold font-mono text-slate-900">
+                              {ord.phone}
+                            </span>
+                            <span className="px-2 py-0.5 bg-indigo-100 text-indigo-900 rounded text-[11px] font-mono font-bold">
+                              Ref: {ord.paymentRef}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                isPending
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                              }`}
+                            >
+                              {isPending ? '⏳ Por Confirmar' : '✅ Confirmado'}
+                            </span>
+                          </div>
+                          <p className="text-xs font-bold text-indigo-950">
+                            ¿Qué ropa pagó?: <span className="font-semibold">{ord.itemsSummary}</span>
+                          </p>
+                          {amountBs > 0 && (
+                            <p className="text-[11px] font-mono text-slate-600">
+                              Monto en comprobante: <strong>Bs. {amountBs.toFixed(2)}</strong>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {isPending && onApproveShopOrder && (
+                          <button
+                            type="button"
+                            onClick={() => onApproveShopOrder(ord)}
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg flex items-center gap-1 cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Confirmar Pago de Ropa</span>
+                          </button>
+                        )}
+                        {onRejectShopOrder && (
+                          <button
+                            type="button"
+                            onClick={() => onRejectShopOrder(ord.id)}
+                            className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>{isPending ? 'Rechazar' : 'Eliminar'}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Add New Product */}
         <div className="lg:col-span-4 bg-white border border-slate-200 rounded-xl p-5 space-y-4 h-fit">
@@ -771,7 +1105,6 @@ export const ShopSection: React.FC<ShopSectionProps> = ({
                   <option value="jugos_saludables">Jugos Saludables</option>
                   <option value="agua_hidratacion">Agua e Hidratación</option>
                   <option value="alimentos">Comida / Alimentos</option>
-                  <option value="ropa_deportiva">Ropa Deportiva</option>
                   <option value="membresias">Membresía</option>
                 </select>
               </div>

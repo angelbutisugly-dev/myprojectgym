@@ -1768,6 +1768,7 @@ function buildNaturalWelcome(
 function formatAdminPaymentCard(params: {
   gymName: string;
   isMembership: boolean;
+  isClothesPayment?: boolean;
   clientPhone: string;
   clientName?: string | null;
   planOrItems: string;
@@ -1782,6 +1783,23 @@ function formatAdminPaymentCard(params: {
     typeof params.scannedBs === 'number' && params.scannedBs > 0
       ? `${formatBsVe(params.scannedBs)} Bs`
       : 'No detectado en imagen (Revisar foto)';
+  const clientLabel = params.clientName
+    ? `${params.clientName} (${params.clientPhone})`
+    : params.clientPhone;
+
+  if (params.isClothesPayment) {
+    return `👕 *PAGO DE ROPA (CATÁLOGO ABIERTO)* — *${params.gymName}*
+━━━━━━━━━━━━━━━━━━━━
+👕 *PRENDAS PAGADAS (DECLARADO POR CLIENTE):* *${params.planOrItems}*
+📥 *MONTO ESCANEADO EN COMPROBANTE:* *${scannedText}*
+📊 *Estado:* 👕 CONFIRMAR PRENDAS Y MONTO DEL PAGO
+🔢 *Operación:* *${params.operationNumber}*
+━━━━━━━━━━━━━━━━━━━━
+• *Cliente:* ${clientLabel}${params.paymentNote ? `\n• *Nota:* ${params.paymentNote}` : ''}
+
+👉 *Admin:* Verifica que el monto pagado corresponda a las prendas indicadas y responde *yes* (o *si* / *aprobado*) para confirmar el pago de ropa.`;
+  }
+
   const expectedText = `${formatBsVe(params.expectedBs)} Bs ($${params.expectedUsd.toFixed(2)} USD)`;
   const diffOk =
     typeof params.scannedBs === 'number' &&
@@ -1795,9 +1813,6 @@ function formatAdminPaymentCard(params: {
       : '📸 VERIFICAR FOTO ADJUNTA';
 
   const headerIcon = params.isMembership ? '🏋️‍♂️ *PAGO DE MEMBRESÍA*' : '🛒 *PAGO DE TIENDA*';
-  const clientLabel = params.clientName
-    ? `${params.clientName} (${params.clientPhone})`
-    : params.clientPhone;
 
   return `${headerIcon} — *${params.gymName}*
 ━━━━━━━━━━━━━━━━━━━━
@@ -3214,9 +3229,40 @@ function evaluateSmartSpanishBot(
     };
   }
 
-  // 4. Match available non-membership products & membership keywords
+  // 4. Match available non-membership products & membership keywords (Clothes are handled as an open payment manager without fixed price/stock/name!)
+  const mentionsClothesPayment =
+    hasFuzzyWord(
+      norm,
+      [
+        'ropa',
+        'franela',
+        'franelas',
+        'short',
+        'shorts',
+        'camisa',
+        'camisas',
+        'leggins',
+        'leggings',
+        'licra',
+        'licras',
+        'conjunto',
+        'conjuntos',
+        'mono',
+        'top',
+        'tops',
+        'sueter',
+        'sudadera',
+        'uniforme',
+        'prenda',
+        'prendas',
+      ],
+      1
+    ) || norm.includes('pago de ropa') || norm.includes('pagar ropa') || norm.includes('comprar ropa');
+
   const matchedShopItems: Array<{ prod: BotProduct; qty: number }> = [];
-  const shopCatalog = products.filter((p) => p.category !== 'membresias');
+  const shopCatalog = products.filter(
+    (p) => p.category !== 'membresias' && p.category !== 'ropa_deportiva'
+  );
 
   for (const p of shopCatalog) {
     const prodNorm = normalizeSpanish(p.name);
@@ -3484,6 +3530,126 @@ function evaluateSmartSpanishBot(
       typeof context?.scannedAmountBs === 'number' && context.scannedAmountBs > 0
         ? context.scannedAmountBs
         : partialInfo.partialBs;
+
+    // Case 6-ROPA: Open Catalog Clothes Payment Manager (no fixed price, stock, or product name; client submits payment and states what clothes they paid for)
+    if (
+      (mentionsClothesPayment ||
+        session.pendingCategory === 'ropa' ||
+        session.lastShownCategory === 'ropa') &&
+      !mentionsMembership &&
+      matchedShopItems.length === 0
+    ) {
+      const cleanedClothesText = cleanedMsgWithoutPhotoTag
+        .replace(
+          /(?:operaci[oó]n|referencia|comprobante|pm)[-\s#:]*(\d{5,20})\b/gi,
+          ' '
+        )
+        .replace(/\b(00\d{6,16}|\d{10,20})\b/g, ' ')
+        .replace(
+          /\b(hola|buenas|ya|pague|pagué|pago|el|la|los|las|de|por|para|mi|un|una|envio|envío|adjunto|aqui|aquí|esta|está|comprobante|captura|capture|foto|recibo|transferi|transferí|realice|realicé|hice|ropa|prendas|prenda|catalogo|catálogo)\b/gi,
+          ' '
+        )
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      // If the client hasn't described WHICH clothes they paid for yet (e.g. just sent a photo or wrote "ya pagué la ropa"), ask them what clothes they paid for!
+      if (cleanedClothesText.length < 3) {
+        session.intentStage = 'awaiting_payment_item_clarification';
+        session.pendingCategory = 'ropa';
+        session.lastShownCategory = 'ropa';
+        session.pendingReceiptRef = extractedRef;
+        session.pendingReceiptHasPhoto = hasPhoto;
+        session.pendingReceiptImageUrl = context?.receiptImageUrl || null;
+        session.pendingReceiptScannedBs = scannedBs || null;
+        return {
+          action: 'NONE',
+          reply: `👕 ¡Recibí tu comprobante de pago${
+            clientRegisteredFirstName ? `, *${clientRegisteredFirstName}*` : ''
+          }! Como el catálogo de ropa se gestiona confirmando cada prenda, por favor *escríbeme por aquí qué ropa o prendas pagaste exactamente* (por ejemplo: *"Conjunto deportivo negro talla M"* o *"Franela blanca y short"*) para pasarlo a confirmación con el administrador.`,
+        };
+      }
+
+      const clothesSummary = `👕 Ropa: ${cleanedMsgWithoutPhotoTag.slice(0, 90)}`;
+      const recordedBs =
+        scannedBs && scannedBs > 0
+          ? Number(scannedBs.toFixed(2))
+          : partialInfo.partialBs && partialInfo.partialBs > 0
+          ? Number(partialInfo.partialBs.toFixed(2))
+          : partialInfo.partialUsd && partialInfo.partialUsd > 0
+          ? Number((partialInfo.partialUsd * activeRate).toFixed(2))
+          : 0;
+      const recordedUsd =
+        recordedBs > 0
+          ? Number((recordedBs / activeRate).toFixed(2))
+          : partialInfo.partialUsd && partialInfo.partialUsd > 0
+          ? Number(partialInfo.partialUsd.toFixed(2))
+          : 0;
+
+      session.intentStage = 'idle';
+      session.pendingCategory = null;
+      session.pendingItemsSummary = null;
+
+      pendingAdminPayments.push({
+        id: `pay_${Date.now()}`,
+        clientPhone: phone,
+        operationNumber: extractedRef,
+        category: 'ropa',
+        membershipCount: 1,
+        planOrItems: clothesSummary,
+        amountUsd: recordedUsd,
+        amountBs: recordedBs,
+        scannedAmountBs: scannedBs || recordedBs || null,
+        expectedAmountBs: recordedBs,
+        paymentNote: 'Pago de Ropa (Catálogo Abierto — confirmar prendas y monto)',
+        receiptImageUrl: context?.receiptImageUrl,
+        designatedAdminPhone: ownerPhoneMem,
+        status: 'pending',
+        createdAt: Date.now(),
+      });
+
+      const adminCard = formatAdminPaymentCard({
+        gymName,
+        isMembership: false,
+        isClothesPayment: true,
+        clientPhone: phone,
+        clientName: clientRegisteredFirstName,
+        planOrItems: clothesSummary,
+        membershipCount: 1,
+        operationNumber: extractedRef,
+        scannedBs: scannedBs || recordedBs || null,
+        expectedBs: recordedBs,
+        expectedUsd: recordedUsd,
+        paymentNote: 'Catálogo de Ropa — Confirmar prendas declaradas por el cliente',
+      });
+
+      return {
+        action: 'CREATE_SHOP_ORDER',
+        redirectedToPhone: ownerPhoneMem,
+        forwardedPaymentNotification: adminCard,
+        extractedShopOrder: {
+          itemsSummary: hasPhoto ? `[📸 Foto Comprobante] ${clothesSummary}` : clothesSummary,
+          categoryGroup: 'ropa',
+          totalUsd: recordedUsd,
+          totalBs: recordedBs,
+          scannedAmountBs: scannedBs || recordedBs || undefined,
+          expectedAmountBs: recordedBs,
+          paymentNote: 'Pago de Ropa (Catálogo Abierto — confirmar prendas declaradas)',
+          paymentRef: extractedRef,
+          receiptImageUrl: context?.receiptImageUrl,
+          pagoMovilTarget: 'Mensualidad y Ropa (BDV 18318153)',
+        },
+        reply: `👕 ¡Listo${
+          clientRegisteredFirstName ? `, *${clientRegisteredFirstName}*` : ''
+        }! ✅ Recibí tu comprobante de pago de ropa (*${cleanedMsgWithoutPhotoTag.slice(
+          0,
+          70
+        )}*) y ya se lo envié al administrador para su confirmación.${
+          !hasPhoto
+            ? `\n\n📸 Recuerda enviarme también la *foto del comprobante* por aquí.`
+            : `\n\nApenas el administrador verifique y confirme tu pago te aviso por aquí mismo.`
+        }`,
+      };
+    }
 
     // Case 6a: They mentioned specific shop items in this message
     if (matchedShopItems.length > 0 && !mentionsMembership) {
@@ -3884,7 +4050,7 @@ function evaluateSmartSpanishBot(
       action: 'NONE',
       reply: `¡Hola${
         clientRegisteredFirstName ? `, *${clientRegisteredFirstName}*` : ''
-      }! Recibí tu foto de pago 👍 Como no habíamos conversado antes sobre tu pedido, ¿me indicas por favor *qué estás pagando* (si es *mensualidad*, cuántas personas, o qué *producto de la tienda*, o si es un abono/pago parcial)?\n\n*(Recuerda siempre escribir en el mismo mensaje de la foto qué estás pagando).*`,
+      }! Recibí tu comprobante de pago 👍 Como no habíamos conversado antes sobre tu pedido, ¿me indicas por favor *qué estás pagando* (si es *mensualidad*, qué *ropa o prendas del catálogo* pagaste, o qué *producto de la tienda*)?\n\n*(Recuerda siempre escribir junto a tu pago qué estás pagando para confirmarlo más rápido).*`,
     };
   }
 
@@ -4197,6 +4363,20 @@ function evaluateSmartSpanishBot(
     };
   }
 
+  // 12B. Asking about Clothes / Ropa Catalog Payment Manager (No fixed price, stock, or product name!)
+  if (mentionsClothesPayment && !isReportingCompletedPayment) {
+    session.intentStage = 'awaiting_payment_receipt';
+    session.pendingCategory = 'ropa';
+    session.lastShownCategory = 'ropa';
+    session.pendingItemsSummary = null;
+    session.pendingTotalUsd = null;
+    session.pendingTotalBs = null;
+    return {
+      action: 'NONE',
+      reply: `${helloPrefix}👕 *Pagos de Ropa / Catálogo — ${gymName}*\n\nComo nuestra ropa pertenece a un catálogo amplio, no tiene un precio ni nombre fijo aquí: *nosotros gestionamos directamente tu pago*.\n\nSi deseas pagar alguna prenda de ropa, realiza tu pago como de costumbre a nuestra cuenta de *Mensualidad y Ropa*:\n\n📲 *Pago Móvil (Mensualidad y Ropa):*\n${PAGO_MOVIL_MENSUALIDAD}\n\n📸 Una vez hecho el pago, *envíame por aquí la foto de tu comprobante y dime qué ropa o prendas pagaste* (por ejemplo: *"Pagué conjunto negro talla M"* o *"2 franelas deportivas"*) para que el administrador lo verifique y confirme.`,
+    };
+  }
+
   // 13. Asking Prices of Things on Sale by Category or General Catalog ("precio de los jugos", "que venden", "precios")
   const asksJuices = hasFuzzyWord(norm, ['jugo', 'jugos', 'batido', 'batidos', 'detox', 'merengada'], 1);
   const asksDrinks = hasFuzzyWord(norm, ['agua', 'aguas', 'bebida', 'bebidas', 'hidratacion'], 1);
@@ -4421,19 +4601,68 @@ function evaluateWithClarifiedReceipt(
   }
 
   const isRopa =
-    matched.length > 0
+    session.pendingCategory === 'ropa' ||
+    (matched.length > 0
       ? matched.every((p) => p.category === 'ropa_deportiva')
-      : hasFuzzyWord(norm, ['ropa', 'franela', 'short', 'camisa'], 1);
+      : hasFuzzyWord(
+          norm,
+          [
+            'ropa',
+            'franela',
+            'franelas',
+            'short',
+            'shorts',
+            'camisa',
+            'camisas',
+            'leggins',
+            'leggings',
+            'licra',
+            'conjunto',
+            'conjuntos',
+            'mono',
+            'top',
+            'sueter',
+            'sudadera',
+            'prenda',
+            'prendas',
+          ],
+          1
+        ));
+
+  // If the client just answered "ropa" without saying WHICH clothes they paid for, ask them to specify what clothes they paid!
+  if (isRopa && matched.length === 0) {
+    const cleanedClothesDesc = rawText
+      .replace(/\b(hola|buenas|pague|pagué|pago|es|de|la|el|por|para|ropa|prendas|prenda|un|una)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (cleanedClothesDesc.length < 3) {
+      session.intentStage = 'awaiting_payment_item_clarification';
+      session.pendingCategory = 'ropa';
+      session.pendingReceiptRef = savedRef;
+      session.pendingReceiptHasPhoto = savedPhoto;
+      session.pendingReceiptImageUrl = savedImgUrl || null;
+      session.pendingReceiptScannedBs = savedScannedBs || null;
+      return {
+        action: 'NONE',
+        reply: `👕 ¡Entendido, es un pago de ropa! Por favor *dime qué prendas o ropa pagaste exactamente* (por ejemplo: *"Conjunto negro talla M"* o *"Franela blanca"*) para registrarlo y que el administrador confirme tu pago.`,
+      };
+    }
+  }
+
   const categoryGroup: 'consumibles' | 'ropa' = isRopa ? 'ropa' : 'consumibles';
   const targetOwnerPhone = categoryGroup === 'ropa' ? ownerPhoneMem : ownerPhoneCons;
 
   const expectedUsd =
     matched.length > 0
       ? matched.reduce((acc, p) => acc + Number(p.basePriceUsd), 0)
+      : isRopa && scannedBs && scannedBs > 0
+      ? Number((scannedBs / activeRate).toFixed(2))
       : session.pendingTotalUsd || 1;
   const expectedBs =
     matched.length > 0
       ? matched.reduce((acc, p) => acc + Number(p.priceBs), 0)
+      : isRopa && scannedBs && scannedBs > 0
+      ? Number(scannedBs.toFixed(2))
       : session.pendingTotalBs || Number((expectedUsd * activeRate).toFixed(2));
 
   let recordedUsd = expectedUsd;
@@ -4452,7 +4681,11 @@ function evaluateWithClarifiedReceipt(
   }
 
   const summaryStr =
-    matched.length > 0 ? matched.map((p) => `1x ${p.name}`).join(', ') : rawText.slice(0, 60);
+    matched.length > 0
+      ? matched.map((p) => `1x ${p.name}`).join(', ')
+      : isRopa
+      ? `👕 Ropa: ${rawText.slice(0, 80)}`
+      : rawText.slice(0, 60);
   const itemLabelWithPhoto = savedPhoto
     ? `[📸 Foto Comprobante] ${summaryStr}${partialInfo.isException ? ' (Pago Parcial/Excepción)' : ''}`
     : summaryStr;
@@ -4468,7 +4701,9 @@ function evaluateWithClarifiedReceipt(
     amountBs: Number(recordedBs.toFixed(2)),
     scannedAmountBs: scannedBs,
     expectedAmountBs: Number(expectedBs.toFixed(2)),
-    paymentNote: partialInfo.note || undefined,
+    paymentNote: isRopa
+      ? 'Pago de Ropa (Catálogo Abierto — confirmar prendas declaradas)'
+      : partialInfo.note || undefined,
     receiptImageUrl: savedImgUrl,
     designatedAdminPhone: targetOwnerPhone,
     status: 'pending',
@@ -4478,6 +4713,7 @@ function evaluateWithClarifiedReceipt(
   const adminCard = formatAdminPaymentCard({
     gymName,
     isMembership: false,
+    isClothesPayment: isRopa,
     clientPhone: phone,
     clientName: clientRegisteredFirstName,
     planOrItems: summaryStr,
@@ -4486,7 +4722,9 @@ function evaluateWithClarifiedReceipt(
     scannedBs,
     expectedBs: Number(expectedBs.toFixed(2)),
     expectedUsd: Number(expectedUsd.toFixed(2)),
-    paymentNote: partialInfo.note || undefined,
+    paymentNote: isRopa
+      ? 'Catálogo de Ropa — Confirmar prendas declaradas por el cliente'
+      : partialInfo.note || undefined,
   });
 
   return {
@@ -5356,6 +5594,23 @@ async function startServer() {
       supportReplyText: result.supportReplyText || null,
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // Endpoint to download 1-click executable scripts directly from the web UI
+  app.get('/api/download-launcher/:target', (req, res) => {
+    const target = req.params.target;
+    let fileName = 'CLIC_AQUI_INICIAR_WINDOWS.bat';
+    if (target === 'mac') {
+      fileName = 'CLIC_AQUI_INICIAR_MAC.command';
+    } else if (target === 'linux') {
+      fileName = 'iniciar_local_mac_linux.sh';
+    }
+    const filePath = path.join(__dirname, fileName);
+    if (fs.existsSync(filePath)) {
+      res.download(filePath, fileName);
+    } else {
+      res.status(404).send('Archivo ejecutable no encontrado');
+    }
   });
 
   const distPath = path.join(__dirname, 'dist');
